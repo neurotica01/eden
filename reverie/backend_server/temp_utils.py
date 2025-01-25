@@ -1,7 +1,7 @@
 import os
 
 # Copy and paste your OpenAI API Key
-openai_api_key = os.env("OPENAI_API_KEY")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 # Put your name
 key_owner = "benny"
 

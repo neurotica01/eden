@@ -12,7 +12,7 @@ import datetime
 
 import sys
 sys.path.append('../../')
-from utils import debug
+from reverie.backend_server.utils import debug
 from persona.prompt_template.run_gpt_prompt import (
     run_gpt_prompt_event_triple,
     run_gpt_prompt_event_poignancy,

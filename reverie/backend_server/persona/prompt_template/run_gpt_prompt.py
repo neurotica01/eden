@@ -19,7 +19,7 @@ from pydantic import BaseModel, field_validator
 
 import sys
 sys.path.append('../../')
-from utils import debug
+from reverie.backend_server.utils import debug
 from persona.prompt_template.gpt_structure import (
   generate_prompt,
   safe_generate_response,

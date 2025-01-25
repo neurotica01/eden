@@ -10,7 +10,7 @@ import random
 
 import sys
 sys.path.append('../../')
-from utils import debug
+from reverie.backend_server.utils import debug
 from persona.prompt_template.run_gpt_prompt import (
     run_gpt_prompt_wake_up_hour,
     run_gpt_prompt_daily_plan,

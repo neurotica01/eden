@@ -10,9 +10,7 @@ from pathlib import Path
 import time
 import traceback
 from openai import AzureOpenAI, OpenAI
-from utils import openai_api_key, use_openai, api_model
-from openai_cost_logger import DEFAULT_LOG_PATH
-from persona.prompt_template.openai_logger_singleton import OpenAICostLogger_Singleton
+from reverie.backend_server.utils import openai_api_key, use_openai, api_model
 
 config_path = Path("../../openai_config.json")
 with open(config_path, "r") as f:
@@ -106,13 +104,6 @@ elif openai_config["embeddings-client"] == "openai":
 else:
   raise ValueError("Invalid embeddings client")
 
-cost_logger = OpenAICostLogger_Singleton(
-  experiment_name = openai_config["experiment-name"],
-  log_folder = DEFAULT_LOG_PATH,
-  cost_upperbound = openai_config["cost-upperbound"]
-)
-
-
 def temp_sleep(seconds=0.1):
   time.sleep(seconds)
 
@@ -179,9 +170,8 @@ def ChatGPT_request(prompt):
     )
     content = completion.choices[0].message.content
     print("Response content:", content)
-    cost_logger.update_cost(
-      completion, input_cost=openai_config["model-costs"]["input"], output_cost=openai_config["model-costs"]["output"]
-    )
+    print("Usage:", completion.usage)
+    
     if content:
       content = content.strip("`").removeprefix("json").strip()
     return content
@@ -215,13 +205,8 @@ def ChatGPT_structured_request(prompt, response_format):
     )
 
     print("Response:", completion)
+    print("Usage:", completion.usage)
     message = completion.choices[0].message
-
-    cost_logger.update_cost(
-      completion,
-      input_cost=openai_config["model-costs"]["input"],
-      output_cost=openai_config["model-costs"]["output"],
-    )
 
     if message.parsed:
       return message.parsed
@@ -229,9 +214,9 @@ def ChatGPT_structured_request(prompt, response_format):
       raise ValueError("Request refused: " + message.refusal)
     raise ValueError("No parsed content or refusal found.")
 
-  except Exception as e: 
+  except Exception as e:
     print(f"Error: {e}")
-    traceback.print_exc()
+    traceback.print_exc() 
     return "LLM ERROR"
 
 
@@ -577,7 +562,7 @@ def get_embedding(text, model=openai_config["embeddings"]):
   if not text: 
     text = "this is blank"
   response = embeddings_client.embeddings.create(input=[text], model=model)
-  cost_logger.update_cost(response=response, input_cost=openai_config["embeddings-costs"]["input"], output_cost=openai_config["embeddings-costs"]["output"])
+  print("Embedding usage:", response.usage)
   return response.data[0].embedding
 
 # def get_embedding(documents):

@@ -9,7 +9,7 @@ import random
 import sys
 sys.path.append('../../')
 from path_finder import path_finder
-from utils import collision_block_id
+from reverie.backend_server.utils import collision_block_id
 
 def execute(persona, maze, personas, plan): 
   """
