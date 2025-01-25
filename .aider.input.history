@@ -1,0 +1,63 @@
+
+# 2025-01-24 23:22:45.834253
++y
+
+# 2025-01-24 23:22:59.977230
++/architect
+
+# 2025-01-24 23:25:01.335133
++hey. so. look at this project. there are two portions - the backend and the frontend . while a lot of packages are out of date the biggest parts are langchain/langchan (whatever, less important right now). and more importantly django is ANCIENT. so first off. how hard would it be to upgrade to essentially latest django?
+
+# 2025-01-24 23:26:26.244684
++s
+
+# 2025-01-24 23:26:29.892687
++n
+
+# 2025-01-24 23:27:45.885139
++well. ok let's take a step back. i've forked this repo. i haven't looked at it yet. it was a successful project but i want to modernize it and hot swap the models with different providers. based on what you see ( i haven't delved into the code too much) - is this a manageable project?
+
+# 2025-01-24 23:29:40.333167
++s
+
+# 2025-01-24 23:29:43.155625
++n
+
+# 2025-01-24 23:36:04.764396
++ha i think you underestimate our combined abilities r1. i bet it won't be that bad. can the backend run and do steps without the front end or does the backend interact with the frontend? like - i guess my question is, is the front end just for humans or is it for the ais as well?
+
+# 2025-01-24 23:42:39.446561
++d
+
+# 2025-01-24 23:42:43.893025
++s
+
+# 2025-01-24 23:42:45.154489
++n
+
+# 2025-01-24 23:49:51.190267
++ok i think that is the place to start. with just that reverie section eh? it might even be better to split the package into a completely separate repo, that way we could reduce the complexity of the migration to latest packages (which is another huge problem). do i need anything besides reverie? how much django is in the backend? it's currently using postgres under the hood? (i saw psycopg2 as a dep. or if its not, can or should we just use sqllite?
+
+# 2025-01-24 23:52:10.815005
++n
+
+# 2025-01-24 23:52:32.287851
++man. you can tell this shit was written by a grad student. its pretty hideously structured code
+
+# 2025-01-24 23:53:25.030581
++n
+
+# 2025-01-24 23:59:45.091176
++ha. what's the pyproject.toml entail? or tell me a little more about strangling? go ahead and create the pyproject.toml. but also - based on our conversation can you just write down a hgh level project plan? less focus on the testing (this is not going to be a production system, still just playing around, but i have standards and i want hackability). and nothing about the django server. just reverie for now
+
+# 2025-01-25 00:01:26.497018
++y
+
+# 2025-01-25 00:08:02.984197
++n
+
+# 2025-01-25 00:11:26.923238
++thanks bossman. i'll take it from here and come back to consult more when necessary
+
+# 2025-01-25 00:13:07.238588
++n
