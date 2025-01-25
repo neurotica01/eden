@@ -8,7 +8,7 @@ import datetime
 
 import sys
 sys.path.append('../')
-from reverie.backend_server.utils import debug
+from config import debug
 from persona.cognitive_modules.retrieve import new_retrieve
 from persona.prompt_template.run_gpt_prompt import (
     run_gpt_prompt_event_triple,

@@ -28,7 +28,7 @@ import shutil
 import traceback
 
 from global_methods import read_file_to_list, check_if_file_exists, copyanything, freeze
-from reverie.backend_server.config import maze_assets_loc, fs_storage, fs_temp_storage
+from config import maze_assets_loc, fs_storage, fs_temp_storage
 from maze import Maze
 from persona.persona import Persona
 from persona.cognitive_modules.converse import load_history_via_whisper

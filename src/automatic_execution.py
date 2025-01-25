@@ -14,7 +14,7 @@ from typing import Tuple, Union, Optional
 from pathlib import Path
 from datetime import datetime
 from multiprocessing import Process
-from openai_cost_logger import OpenAICostLoggerViz
+# from openai_cost_logger import OpenAICostLoggerViz
 
 
 def parse_args() -> Tuple[str, str, int, Union[bool, None], str, str, str]:
@@ -267,7 +267,7 @@ if __name__ == '__main__':
                 pid = None
 
     print(f"(Auto-Exec): EXPERIMENT FINISHED: {exp_name}")
-    OpenAICostLoggerViz.print_experiment_cost(experiment=exp_name, path=log_path)
-    OpenAICostLoggerViz.print_total_cost(path=log_path)
+    # OpenAICostLoggerViz.print_experiment_cost(experiment=exp_name, path=log_path)
+    # OpenAICostLoggerViz.print_total_cost(path=log_path)
     print(f"(Auto-Exec): Execution time: {datetime.now() - start_time}")
     sys.exit(0)

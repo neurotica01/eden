@@ -11,7 +11,7 @@ import math
 from typing import Union
 
 from global_methods import read_file_to_list
-from reverie.backend_server.config import env_matrix
+from config import env_matrix
 
 class Maze:
   def __init__(self, maze_name, block_remaps: Union[dict, None] = None):
