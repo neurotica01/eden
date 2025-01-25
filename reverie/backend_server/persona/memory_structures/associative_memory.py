@@ -1,148 +1,149 @@
 """
+Modernized memory module using SQLite and strong typing.
+
 Author: Joon Sung Park (joonspk@stanford.edu)
-
-File: associative_memory.py
-Description: Defines the core long-term memory module for generative agents.
-
-Note (May 1, 2023) -- this class is the Memory Stream module in the generative
-agents paper. 
 """
-import json
-import datetime
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal, Optional, List, Set
+import sqlite3
+import numpy as np
 
+MemoryType = Literal["event", "thought", "chat"]
 
-class ConceptNode: 
-  def __init__(self,
-               node_id, node_count, type_count, node_type, depth,
-               created, expiration, 
-               s, p, o, 
-               description, embedding_key, poignancy, keywords, filling): 
-    self.node_id = node_id
-    self.node_count = node_count
-    self.type_count = type_count
-    self.type = node_type # thought / event / chat
-    self.depth = depth
-
-    self.created = created
-    self.expiration = expiration
-    self.last_accessed = self.created
-
-    self.subject = s
-    self.predicate = p
-    self.object = o
-
-    self.description = description
-    self.embedding_key = embedding_key
-    self.poignancy = poignancy
-    self.keywords = keywords
-    self.filling = filling
+@dataclass
+class MemoryNode:
+    """Core memory unit with strong typing and validation"""
+    id: str
+    type: MemoryType
+    subject: str
+    predicate: str
+    object: str
+    description: str
+    embedding: List[float]
+    poignancy: float
+    keywords: Set[str]
+    filling: Optional[List[str]] = None
+    created: datetime = datetime.now()
+    last_accessed: datetime = datetime.now()
+    expiration: Optional[datetime] = None
 
 
   def spo_summary(self): 
     return (self.subject, self.predicate, self.object)
 
 
-class AssociativeMemory: 
-  def __init__(self, f_saved): 
-    self.id_to_node = dict()
-
-    self.seq_event = []
-    self.seq_thought = []
-    self.seq_chat = []
-
-    self.kw_to_event = dict()
-    self.kw_to_thought = dict()
-    self.kw_to_chat = dict()
-
-    self.kw_strength_event = dict()
-    self.kw_strength_thought = dict()
-
-    self.embeddings = json.load(open(f_saved + "/embeddings.json"))
-
-    nodes_load = json.load(open(f_saved + "/nodes.json"))
-    for count in range(len(nodes_load.keys())): 
-      node_id = f"node_{str(count+1)}"
-      node_details = nodes_load[node_id]
-
-      node_count = node_details["node_count"]
-      type_count = node_details["type_count"]
-      node_type = node_details["type"]
-      depth = node_details["depth"]
-
-      created = datetime.datetime.strptime(node_details["created"], 
-                                           '%Y-%m-%d %H:%M:%S')
-      expiration = None
-      if node_details["expiration"]: 
-        expiration = datetime.datetime.strptime(node_details["expiration"],
-                                                '%Y-%m-%d %H:%M:%S')
-
-      s = node_details["subject"]
-      p = node_details["predicate"]
-      o = node_details["object"]
-
-      description = node_details["description"]
-      embedding_pair = (node_details["embedding_key"], 
-                        self.embeddings[node_details["embedding_key"]])
-      poignancy =node_details["poignancy"]
-      keywords = set(node_details["keywords"])
-      filling = node_details["filling"]
-      
-      if node_type == "event": 
-        self.add_event(created, expiration, s, p, o, 
-                   description, keywords, poignancy, embedding_pair, filling)
-      elif node_type == "chat": 
-        self.add_chat(created, expiration, s, p, o, 
-                   description, keywords, poignancy, embedding_pair, filling)
-      elif node_type == "thought": 
-        self.add_thought(created, expiration, s, p, o, 
-                   description, keywords, poignancy, embedding_pair, filling)
-
-    kw_strength_load = json.load(open(f_saved + "/kw_strength.json"))
-    if kw_strength_load["kw_strength_event"]: 
-      self.kw_strength_event = kw_strength_load["kw_strength_event"]
-    if kw_strength_load["kw_strength_thought"]: 
-      self.kw_strength_thought = kw_strength_load["kw_strength_thought"]
+class VectorMemory:
+    """SQLite-backed memory storage with vector search capabilities"""
+    
+    def __init__(self, db_path: str = ":memory:"):
+        self.db = sqlite3.connect(db_path)
+        self._init_schema()
+        
+    def _init_schema(self):
+        """Initialize database schema"""
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS memories (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                subject TEXT,
+                predicate TEXT,
+                object TEXT,
+                description TEXT,
+                embedding BLOB,
+                poignancy REAL,
+                keywords TEXT,
+                filling TEXT,
+                created TIMESTAMP,
+                last_accessed TIMESTAMP,
+                expiration TIMESTAMP
+            )
+        """)
+        self.db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)
+        """)
+        self.db.commit()
+        
+    def add_memory(self, node: MemoryNode):
+        """Store a new memory node"""
+        embedding_bytes = np.asarray(node.embedding).tobytes()
+        keywords_str = ",".join(node.keywords)
+        filling_str = ",".join(node.filling) if node.filling else None
+        
+        self.db.execute(
+            """
+            INSERT INTO memories VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
+            """,
+            (
+                node.id,
+                node.type,
+                node.subject,
+                node.predicate,
+                node.object,
+                node.description,
+                embedding_bytes,
+                node.poignancy,
+                keywords_str,
+                filling_str,
+                node.created.isoformat(),
+                node.last_accessed.isoformat(),
+                node.expiration.isoformat() if node.expiration else None
+            )
+        )
+        self.db.commit()
 
     
-  def save(self, out_json): 
-    r = dict()
-    for count in range(len(self.id_to_node.keys()), 0, -1): 
-      node_id = f"node_{str(count)}"
-      node = self.id_to_node[node_id]
-
-      r[node_id] = dict()
-      r[node_id]["node_count"] = node.node_count
-      r[node_id]["type_count"] = node.type_count
-      r[node_id]["type"] = node.type
-      r[node_id]["depth"] = node.depth
-
-      r[node_id]["created"] = node.created.strftime('%Y-%m-%d %H:%M:%S')
-      r[node_id]["expiration"] = None
-      if node.expiration: 
-        r[node_id]["expiration"] = (node.expiration
-                                        .strftime('%Y-%m-%d %H:%M:%S'))
-
-      r[node_id]["subject"] = node.subject
-      r[node_id]["predicate"] = node.predicate
-      r[node_id]["object"] = node.object
-
-      r[node_id]["description"] = node.description
-      r[node_id]["embedding_key"] = node.embedding_key
-      r[node_id]["poignancy"] = node.poignancy
-      r[node_id]["keywords"] = list(node.keywords)
-      r[node_id]["filling"] = node.filling
-
-    with open(out_json+"/nodes.json", "w") as outfile:
-      json.dump(r, outfile)
-
-    r = dict()
-    r["kw_strength_event"] = self.kw_strength_event
-    r["kw_strength_thought"] = self.kw_strength_thought
-    with open(out_json+"/kw_strength.json", "w") as outfile:
-      json.dump(r, outfile)
-
-    with open(out_json+"/embeddings.json", "w") as outfile:
-      json.dump(self.embeddings, outfile)
+    def search(self, query_embedding: List[float], top_k: int = 5) -> List[MemoryNode]:
+        """Semantic search using cosine similarity"""
+        # Get all stored embeddings
+        cursor = self.db.execute("SELECT id, embedding FROM memories")
+        results = []
+        
+        for row in cursor:
+            node_id, embedding_bytes = row
+            stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
+            
+            # Calculate cosine similarity
+            similarity = np.dot(query_embedding, stored_embedding) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
+            )
+            results.append((node_id, similarity))
+            
+        # Sort by similarity and get top_k
+        results.sort(key=lambda x: x[1], reverse=True)
+        top_ids = [x[0] for x in results[:top_k]]
+        
+        # Retrieve full nodes
+        return [self.get_node(node_id) for node_id in top_ids]
+        
+    def get_node(self, node_id: str) -> MemoryNode:
+        """Retrieve a memory node by ID"""
+        cursor = self.db.execute(
+            "SELECT * FROM memories WHERE id = ?", (node_id,)
+        )
+        row = cursor.fetchone()
+        
+        if not row:
+            raise ValueError(f"Node {node_id} not found")
+            
+        # Convert SQLite row to MemoryNode
+        return MemoryNode(
+            id=row[0],
+            type=row[1],
+            subject=row[2],
+            predicate=row[3],
+            object=row[4],
+            description=row[5],
+            embedding=np.frombuffer(row[6], dtype=np.float32).tolist(),
+            poignancy=row[7],
+            keywords=set(row[8].split(",")) if row[8] else set(),
+            filling=row[9].split(",") if row[9] else None,
+            created=datetime.fromisoformat(row[10]),
+            last_accessed=datetime.fromisoformat(row[11]),
+            expiration=datetime.fromisoformat(row[12]) if row[12] else None
+        )
 
 
   def add_event(self, created, expiration, s, p, o, 
