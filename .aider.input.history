@@ -70,3 +70,18 @@
 
 # 2025-01-25 00:58:24.931214
 +wait wait are you saying that we don't even use the openai library? lol
+
+# 2025-01-25 10:52:15.752375
++Running backend server at: http://127.0.0.1:8000/simulator_home
++Timestamp: 2025-01-25_10-50-54
++Traceback (most recent call last):
++  File "/home/bbecker/projects/eden/reverie/backend_server/reverie.py", line 32, in <module>
++    from maze import Maze
++  File "/home/bbecker/projects/eden/reverie/backend_server/maze.py", line 14, in <module>
++    from reverie.backend_server.temp_utils import env_matrix
++  File "/home/bbecker/projects/eden/reverie/backend_server/reverie.py", line 32, in <module>
++    from maze import Maze
++ImportError: cannot import name 'Maze' from partially initialized module 'maze' (most likely due to a circular import) (/home/bbecker/projects/eden/reverie/backend_server/maze.py)
+
+# 2025-01-25 10:52:30.490492
++n
