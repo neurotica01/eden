@@ -328,32 +328,68 @@ class VectorMemory:
       return ret_str
 
 
-    def retrieve_relevant_thoughts(self, s_content, p_content, o_content): 
-      contents = [s_content, p_content, o_content]
+    def retrieve_relevant_thoughts(self, s_content, p_content, o_content):
+        """Retrieve thoughts based on subject/predicate/object content"""
+        contents = [s_content.lower(), p_content.lower(), o_content.lower()]
+        contents = [c for c in contents if c]  # Remove empty strings
+        
+        if not contents:
+            return set()
+            
+        # Build query with OR conditions for each content term
+        query = """
+            SELECT * FROM memories 
+            WHERE type = 'thought' AND (
+        """ + " OR ".join([
+            "keywords LIKE ?" for _ in contents
+        ]) + ")"
+        
+        # Add wildcards for LIKE queries
+        params = [f"%{c}%" for c in contents]
+        
+        cursor = self.db.execute(query, params)
+        rows = cursor.fetchall()
+        
+        return {self.get_node(row[0]) for row in rows}
 
-      ret = []
-      for i in contents: 
-        if i in self.kw_to_thought: 
-          ret += self.kw_to_thought[i.lower()]
 
-      ret = set(ret)
-      return ret
+    def retrieve_relevant_events(self, s_content, p_content, o_content):
+        """Retrieve events based on subject/predicate/object content"""
+        contents = [s_content.lower(), p_content.lower(), o_content.lower()]
+        contents = [c for c in contents if c]  # Remove empty strings
+        
+        if not contents:
+            return set()
+            
+        # Build query with OR conditions for each content term
+        query = """
+            SELECT * FROM memories 
+            WHERE type = 'event' AND (
+        """ + " OR ".join([
+            "keywords LIKE ?" for _ in contents
+        ]) + ")"
+        
+        # Add wildcards for LIKE queries
+        params = [f"%{c}%" for c in contents]
+        
+        cursor = self.db.execute(query, params)
+        rows = cursor.fetchall()
+        
+        return {self.get_node(row[0]) for row in rows}
 
 
-    def retrieve_relevant_events(self, s_content, p_content, o_content): 
-      contents = [s_content, p_content, o_content]
-
-      ret = []
-      for i in contents: 
-        if i in self.kw_to_event: 
-          ret += self.kw_to_event[i]
-
-      ret = set(ret)
-      return ret
-
-
-    def get_last_chat(self, target_persona_name): 
-      if target_persona_name.lower() in self.kw_to_chat: 
-        return self.kw_to_chat[target_persona_name.lower()][0]
-      else: 
-        return False
+    def get_last_chat(self, target_persona_name):
+        """Get the most recent chat with the target persona"""
+        cursor = self.db.execute("""
+            SELECT * FROM memories 
+            WHERE type = 'chat'
+            AND keywords LIKE ?
+            ORDER BY created DESC
+            LIMIT 1
+        """, (f"%{target_persona_name.lower()}%",))
+        
+        row = cursor.fetchone()
+        if not row:
+            return False
+            
+        return self.get_node(row[0])
