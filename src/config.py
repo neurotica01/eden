@@ -13,6 +13,8 @@ fs_storage = "../../storage"
 fs_temp_storage = "../../temp_storage"
 
 collision_block_id = "32125"
+use_openai = True
+api_model = "gpt-4o"
 
 # Verbose 
 debug = True

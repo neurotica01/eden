@@ -12,7 +12,7 @@ import traceback
 from openai import AzureOpenAI, OpenAI
 from config import openai_api_key, use_openai, api_model
 
-config_path = Path("../../openai_config.json")
+config_path = Path("openai_config.json")
 with open(config_path, "r") as f:
   openai_config = json.load(f) 
 
