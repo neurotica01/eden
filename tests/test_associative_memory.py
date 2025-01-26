@@ -265,6 +265,108 @@ def test_get_str_seq_methods(sample_memory):
     assert "John: Nice weather" in chats_str
     assert "Jane: Yes!" in chats_str
 
+def test_retrieve_relevant_events(sample_memory):
+    created = datetime.datetime.now()
+    
+    # Add some test events
+    event1 = sample_memory.add_event(
+        created=created,
+        expiration=None,
+        s="John",
+        p="goes to",
+        o="store",
+        description="John goes to the store",
+        keywords={"store", "shopping"},
+        poignancy=0.5,
+        embedding_pair=("key16", [0.1, 0.2, 0.3]),
+        filling=None
+    )
+    
+    event2 = sample_memory.add_event(
+        created=created,
+        expiration=None,
+        s="Jane",
+        p="shops at",
+        o="mall",
+        description="Jane shops at the mall",
+        keywords={"mall", "shopping"},
+        poignancy=0.5,
+        embedding_pair=("key17", [0.4, 0.5, 0.6]),
+        filling=None
+    )
+    
+    # Test retrieval by subject
+    relevant = sample_memory.retrieve_relevant_events("John", "", "")
+    assert len(relevant) == 1
+    assert event1 in relevant
+    
+    # Test retrieval by predicate
+    relevant = sample_memory.retrieve_relevant_events("", "shops at", "")
+    assert len(relevant) == 1
+    assert event2 in relevant
+    
+    # Test retrieval by object
+    relevant = sample_memory.retrieve_relevant_events("", "", "store")
+    assert len(relevant) == 1
+    assert event1 in relevant
+    
+    # Test retrieval with no matches
+    relevant = sample_memory.retrieve_relevant_events("Bob", "", "")
+    assert len(relevant) == 0
+
+def test_expiration(sample_memory):
+    created = datetime.datetime.now()
+    expiration = created + datetime.timedelta(days=1)
+    
+    node = sample_memory.add_event(
+        created=created,
+        expiration=expiration,
+        s="John",
+        p="goes to",
+        o="store",
+        description="John goes to the store",
+        keywords={"store"},
+        poignancy=0.5,
+        embedding_pair=("key18", [0.1, 0.2, 0.3]),
+        filling=None
+    )
+    
+    assert node.expiration == expiration
+    assert node.expiration > node.created
+
+def test_thought_depth(sample_memory):
+    created = datetime.datetime.now()
+    
+    # Add base thought
+    thought1 = sample_memory.add_thought(
+        created=created,
+        expiration=None,
+        s="John",
+        p="thinks about",
+        o="dinner",
+        description="Base thought about dinner",
+        keywords={"dinner"},
+        poignancy=0.3,
+        embedding_pair=("key19", [0.1, 0.2, 0.3]),
+        filling=None
+    )
+    assert thought1.depth == 1  # Base depth
+    
+    # Add thought that references first thought
+    thought2 = sample_memory.add_thought(
+        created=created,
+        expiration=None,
+        s="John",
+        p="plans",
+        o="cooking",
+        description="Planning based on dinner thought",
+        keywords={"cooking"},
+        poignancy=0.3,
+        embedding_pair=("key20", [0.4, 0.5, 0.6]),
+        filling=[thought1.node_id]
+    )
+    assert thought2.depth == 2  # Depth should increase
+
 def test_keyword_strength(sample_memory):
     created = datetime.datetime.now()
     
