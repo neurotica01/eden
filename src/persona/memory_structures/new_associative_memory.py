@@ -317,6 +317,11 @@ class VectorMemory:
         return node
 
 
+    def get_embedding(self, text: str) -> List[float]:
+        """Get embedding vector for text using the same model used for storage"""
+        from src.persona.prompt_template.gpt_structure import get_embedding
+        return get_embedding(text)[1]  # Returns the vector part of the embedding pair
+        
     def get_summarized_latest_events(self, retention):
         """Get summaries of the most recent events"""
         cursor = self.db.execute("""
@@ -385,53 +390,71 @@ class VectorMemory:
 
 
     def retrieve_relevant_thoughts(self, s_content, p_content, o_content):
-        """Retrieve thoughts based on subject/predicate/object content"""
-        contents = [s_content.lower(), p_content.lower(), o_content.lower()]
-        contents = [c for c in contents if c]  # Remove empty strings
-        
-        if not contents:
+        """Retrieve thoughts based on semantic similarity to the query"""
+        # Combine the search terms into a single query string
+        query = " ".join(filter(None, [s_content, p_content, o_content]))
+        if not query:
             return set()
             
-        # Build query with OR conditions for each content term
-        query = """
-            SELECT * FROM memories 
-            WHERE type = 'thought' AND (
-        """ + " OR ".join([
-            "keywords LIKE ?" for _ in contents
-        ]) + ")"
+        # Get query embedding from the combined text
+        query_embedding = self.get_embedding(query)
         
-        # Add wildcards for LIKE queries
-        params = [f"%{c}%" for c in contents]
+        # Get all thought nodes with their embeddings
+        cursor = self.db.execute("""
+            SELECT id, embedding FROM memories 
+            WHERE type = 'thought'
+        """)
         
-        cursor = self.db.execute(query, params)
-        rows = cursor.fetchall()
+        results = []
+        for row in cursor:
+            node_id, embedding_bytes = row
+            stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
+            
+            # Calculate cosine similarity
+            similarity = np.dot(query_embedding, stored_embedding) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
+            )
+            results.append((node_id, similarity))
         
-        return {self.get_node(row[0]) for row in rows}
+        # Sort by similarity and get top matches (similarity > 0.7)
+        results.sort(key=lambda x: x[1], reverse=True)
+        relevant_ids = [id for id, sim in results if sim > 0.7]
+        
+        return {self.get_node(node_id) for node_id in relevant_ids}
 
 
     def retrieve_relevant_events(self, s_content, p_content, o_content):
-        """Retrieve events based on subject/predicate/object content"""
-        contents = [s_content.lower(), p_content.lower(), o_content.lower()]
-        contents = [c for c in contents if c]  # Remove empty strings
-        
-        if not contents:
+        """Retrieve events based on semantic similarity to the query"""
+        # Combine the search terms into a single query string
+        query = " ".join(filter(None, [s_content, p_content, o_content]))
+        if not query:
             return set()
             
-        # Build query with OR conditions for each content term
-        query = """
-            SELECT * FROM memories 
-            WHERE type = 'event' AND (
-        """ + " OR ".join([
-            "keywords LIKE ?" for _ in contents
-        ]) + ")"
+        # Get query embedding from the combined text
+        query_embedding = self.get_embedding(query)
         
-        # Add wildcards for LIKE queries
-        params = [f"%{c}%" for c in contents]
+        # Get all event nodes with their embeddings
+        cursor = self.db.execute("""
+            SELECT id, embedding FROM memories 
+            WHERE type = 'event'
+        """)
         
-        cursor = self.db.execute(query, params)
-        rows = cursor.fetchall()
+        results = []
+        for row in cursor:
+            node_id, embedding_bytes = row
+            stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
+            
+            # Calculate cosine similarity
+            similarity = np.dot(query_embedding, stored_embedding) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
+            )
+            results.append((node_id, similarity))
         
-        return {self.get_node(row[0]) for row in rows}
+        # Sort by similarity and get top matches (similarity > 0.7)
+        results.sort(key=lambda x: x[1], reverse=True)
+        relevant_ids = [id for id, sim in results if sim > 0.7]
+        
+        return {self.get_node(node_id) for node_id in relevant_ids}
 
 
     def get_last_chat(self, target_persona_name):
