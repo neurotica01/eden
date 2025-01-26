@@ -167,3 +167,153 @@ def test_get_last_chat(sample_memory):
     
     # Test non-existent chat
     assert sample_memory.get_last_chat("Bob") == False
+
+def test_get_summarized_latest_events(sample_memory):
+    created = datetime.datetime.now()
+    
+    event1 = sample_memory.add_event(
+        created=created,
+        expiration=None,
+        s="John",
+        p="goes to",
+        o="store",
+        description="John goes to the store",
+        keywords={"store"},
+        poignancy=0.5,
+        embedding_pair=("key8", [0.1, 0.2, 0.3]),
+        filling=None
+    )
+    
+    event2 = sample_memory.add_event(
+        created=created + datetime.timedelta(minutes=5),
+        expiration=None,
+        s="John",
+        p="buys",
+        o="groceries",
+        description="John buys groceries",
+        keywords={"groceries"},
+        poignancy=0.5,
+        embedding_pair=("key9", [0.4, 0.5, 0.6]),
+        filling=None
+    )
+    
+    # Test with retention=1
+    latest = sample_memory.get_summarized_latest_events(1)
+    assert len(latest) == 1
+    assert event2.spo_summary() in latest
+    
+    # Test with retention=2
+    latest = sample_memory.get_summarized_latest_events(2)
+    assert len(latest) == 2
+    assert event1.spo_summary() in latest
+    assert event2.spo_summary() in latest
+
+def test_get_str_seq_methods(sample_memory):
+    created = datetime.datetime.now()
+    
+    # Add event
+    sample_memory.add_event(
+        created=created,
+        expiration=None,
+        s="John",
+        p="goes to",
+        o="store",
+        description="John goes to the store",
+        keywords={"store"},
+        poignancy=0.5,
+        embedding_pair=("key10", [0.1, 0.2, 0.3]),
+        filling=None
+    )
+    
+    # Add thought
+    sample_memory.add_thought(
+        created=created,
+        expiration=None,
+        s="John",
+        p="thinks about",
+        o="dinner",
+        description="John thinks about dinner",
+        keywords={"dinner"},
+        poignancy=0.3,
+        embedding_pair=("key11", [0.4, 0.5, 0.6]),
+        filling=None
+    )
+    
+    # Add chat
+    sample_memory.add_chat(
+        created=created,
+        expiration=None,
+        s="John",
+        p="talks to",
+        o="Jane",
+        description="Chat about weather",
+        keywords={"weather"},
+        poignancy=0.4,
+        embedding_pair=("key12", [0.7, 0.8, 0.9]),
+        filling=[("John", "Nice weather"), ("Jane", "Yes!")]
+    )
+    
+    # Test string representations
+    events_str = sample_memory.get_str_seq_events()
+    assert "John goes to store" in events_str
+    assert "Event" in events_str
+    
+    thoughts_str = sample_memory.get_str_seq_thoughts()
+    assert "John thinks about dinner" in thoughts_str
+    assert "Thought" in thoughts_str
+    
+    chats_str = sample_memory.get_str_seq_chats()
+    assert "Chat about weather" in chats_str
+    assert "John: Nice weather" in chats_str
+    assert "Jane: Yes!" in chats_str
+
+def test_keyword_strength(sample_memory):
+    created = datetime.datetime.now()
+    
+    # Add events with same keywords
+    sample_memory.add_event(
+        created=created,
+        expiration=None,
+        s="John",
+        p="goes to",
+        o="store",
+        description="John goes to the store",
+        keywords={"store", "shopping"},
+        poignancy=0.5,
+        embedding_pair=("key13", [0.1, 0.2, 0.3]),
+        filling=None
+    )
+    
+    sample_memory.add_event(
+        created=created,
+        expiration=None,
+        s="Jane",
+        p="visits",
+        o="store",
+        description="Jane visits the store",
+        keywords={"store", "shopping"},
+        poignancy=0.5,
+        embedding_pair=("key14", [0.4, 0.5, 0.6]),
+        filling=None
+    )
+    
+    # Check keyword strengths
+    assert sample_memory.kw_strength_event["store"] == 2
+    assert sample_memory.kw_strength_event["shopping"] == 2
+    
+    # Add thought with keywords
+    sample_memory.add_thought(
+        created=created,
+        expiration=None,
+        s="John",
+        p="thinks about",
+        o="shopping",
+        description="John thinks about shopping",
+        keywords={"shopping", "planning"},
+        poignancy=0.3,
+        embedding_pair=("key15", [0.7, 0.8, 0.9]),
+        filling=None
+    )
+    
+    assert sample_memory.kw_strength_thought["shopping"] == 1
+    assert sample_memory.kw_strength_thought["planning"] == 1
