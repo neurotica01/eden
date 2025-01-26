@@ -2,6 +2,7 @@ import os
 import time
 import json
 import glob
+from global_methods import log
 
 frontend_path = "environment/frontend_server"
 last_file = None
@@ -19,8 +20,8 @@ while True:
     if latest_file != last_file:
         os.system("clear")
         with open(latest_file, "r") as f:
-            print(f.read())
-            print(latest_file)
+            log(f.read())
+            log(latest_file)
 
         last_file = latest_file
 

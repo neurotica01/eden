@@ -33,7 +33,7 @@ from maze import Maze
 from persona.persona import Persona
 from persona.cognitive_modules.converse import load_history_via_whisper
 from persona.prompt_template.run_gpt_prompt import run_plugin
-
+from global_methods import log
 current_file = os.path.abspath(__file__)
 
 def trace_calls_and_lines(frame, event, arg):
@@ -44,7 +44,7 @@ def trace_calls_and_lines(frame, event, arg):
     if os.path.abspath(filename).startswith(os.getcwd()):
     # # if os.path.abspath(filename).startswith():
     # # if filename == current_file:
-      print(f"Calling function: {code.co_name} in {short_filename}:{code.co_firstlineno}")
+      log(f"Calling function: {code.co_name} in {short_filename}:{code.co_firstlineno}", tee_to_console=True)
 
 ##############################################################################
 #                                  REVERIE                                   #
@@ -57,7 +57,7 @@ class ReverieServer:
                fork_sim_code,
                sim_code):
     
-    print ("(reverie): Temp storage: ", fs_temp_storage)
+    log("(reverie): Temp storage: ", fs_temp_storage)
         
     # FORKING FROM A PRIOR SIMULATION:
     # <fork_sim_code> indicates the simulation we are forking from. 
@@ -226,12 +226,12 @@ class ReverieServer:
 
         if type(tree) == type(list()): 
           if tree:
-            print (dash, tree)
+            log(dash, tree)
           return 
 
         for key, val in tree.items(): 
           if key: 
-            print (dash, key)
+            log(dash, key)
           _print_tree(val, depth+1)
       
       _print_tree(tree, 0)
@@ -282,7 +282,7 @@ class ReverieServer:
                                                          i_det["game_object"]]
 
         # Incrementally outputting the s_mem and saving the json file. 
-        print ("= " * 15)
+        log("= " * 15)
         out_file = fs_temp_storage + "/path_tester_out.json"
         with open(out_file, "w") as outfile: 
           outfile.write(json.dumps(s_mem, indent=2))
@@ -515,10 +515,10 @@ class ReverieServer:
     OUTPUT
       None
     """
-    print("Note: The agents in this simulation package are computational")
-    print("constructs powered by generative agents architecture and LLM. We")
-    print("clarify that these agents lack human-like agency, consciousness,")
-    print("and independent decision-making.\n---")
+    log("Note: The agents in this simulation package are computational")
+    log("constructs powered by generative agents architecture and LLM. We")
+    log("clarify that these agents lack human-like agency, consciousness,")
+    log("and independent decision-making.\n---")
 
     # <sim_folder> points to the current simulation folder.
     sim_folder = f"{fs_storage}/{self.sim_code}"
@@ -530,7 +530,7 @@ class ReverieServer:
       else:
         sim_command = input_command
       sim_command = sim_command.strip()
-      print(sim_command)
+      log(sim_command)
       ret_str = ""
 
       try:
@@ -564,9 +564,9 @@ class ReverieServer:
           # Example: run 1000
           if headless is None:
             headless = False
-            print("Setting headless to False.")
+            log("Setting headless to False.")
           elif headless:
-            print(
+            log(
                 "Invalid command: Headless mode is on. Use 'headless' instead."
             )
             continue
@@ -579,9 +579,9 @@ class ReverieServer:
           # Example: headless 1000
           if headless is None:
             headless = True
-            print("Setting headless to True.")
+            log("Setting headless to True.")
           elif not headless:
-            print(
+            log(
               "Invalid command: Headless mode is off. Use 'run' instead."
             )
             continue
@@ -721,10 +721,10 @@ class ReverieServer:
 
           load_history_via_whisper(self.personas, clean_whispers, self.curr_time)
 
-        print(ret_str)
+        log(ret_str)
 
       except Exception as e:
-        print("(reverie): Error: ", e)
+        log("(reverie): Error: ", e)
         traceback.print_exc()
         # remove movement file if it exists
         movement_file = f"{sim_folder}/movement/{self.step}.json"
@@ -734,7 +734,7 @@ class ReverieServer:
         env_file = f"{sim_folder}/environment/{self.step}.json"
         if os.path.exists(env_file):
           os.remove(env_file)
-        print(f"(reverie): Error at step {self.step}")
+        log(f"(reverie): Error at step {self.step}")
         self.step -= 1
         self.curr_time -= datetime.timedelta(seconds=self.sec_per_step)
         raise Exception(e, self.step, "stepback")
@@ -759,7 +759,7 @@ if __name__ == "__main__":
   origin = input(origin_prompt).strip()
   if not origin:
     origin = default
-    print(origin)
+    log(origin)
 
   # Get the name of the new simulation from the user
   last_sim_code = ""

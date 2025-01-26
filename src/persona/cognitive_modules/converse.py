@@ -6,6 +6,8 @@ Description: An extra cognitive module for generating conversations.
 """
 import datetime
 
+from global_methods import log
+
 import sys
 sys.path.append('../')
 from config import debug
@@ -44,7 +46,7 @@ def generate_agent_chat_summarize_ideas(init_persona,
       if response:
         summarized_idea = response[0]
       else:
-        print(
+        log(
           "ERROR: <generate_agent_chat_summarize_ideas>: Could not get summarized idea"
         )
         summarized_idea = ""
@@ -70,7 +72,7 @@ def generate_summarize_agent_relationship(init_persona,
     if response:
       summarized_relationship = response[0]
     else:
-      print("ERROR: Could not get summarized relationship")
+      log("ERROR: Could not get summarized relationship")
       summarized_relationship = ""
     return summarized_relationship
 
@@ -89,10 +91,10 @@ def generate_summarize_agent_relationship(init_persona,
 #   if response:
 #     summarized_idea = response[0]
 #   else:
-#     print("ERROR: <generate_agent_chat>: Could not get summarized idea")
+#     log("ERROR: <generate_agent_chat>: Could not get summarized idea")
 #     summarized_idea = []
 #   for i in summarized_idea:
-#     print(i)
+#     log(i)
 #   return summarized_idea
 
 
@@ -160,23 +162,23 @@ def generate_one_utterance(maze, init_persona, target_persona, retrieved, curr_c
     maze, init_persona, target_persona, retrieved, curr_context, curr_chat
   )[0]
 
-  print("DEBUG HERE", x)
+  log("DEBUG HERE", x)
 
   try:
     return x["utterance"], x["end"]  # type: ignore
   except:
-    print("ERROR: <generate_one_utterance>: Could not get utterance")
+    log("ERROR: <generate_one_utterance>: Could not get utterance")
     return "", True
 
 def agent_chat_v2(maze, init_persona, target_persona): 
   curr_chat = []
-  print ("July 23")
+  log("July 23")
 
   for i in range(8): 
     focal_points = [f"{target_persona.scratch.name}"]
     retrieved = new_retrieve(init_persona, focal_points, 50) 
     relationship = generate_summarize_agent_relationship(init_persona, target_persona, retrieved)
-    print ("-------- relationship", relationship)
+    log("-------- relationship", relationship)
     last_chat = ""
     for i in curr_chat[-4:]:
       last_chat += ": ".join(i) + "\n"
@@ -198,7 +200,7 @@ def agent_chat_v2(maze, init_persona, target_persona):
     focal_points = [f"{init_persona.scratch.name}"]
     retrieved = new_retrieve(target_persona, focal_points, 50)
     relationship = generate_summarize_agent_relationship(target_persona, init_persona, retrieved)
-    print ("-------- relationship", relationship)
+    log("-------- relationship", relationship)
     last_chat = ""
     for i in curr_chat[-4:]:
       last_chat += ": ".join(i) + "\n"
@@ -216,16 +218,12 @@ def agent_chat_v2(maze, init_persona, target_persona):
     if end:
       break
 
-  print ("July 23 PU")
+  log("July 23 PU")
   for row in curr_chat: 
-    print (row)
-  print ("July 23 FIN")
+    log(row)
+  log("July 23 FIN")
 
   return curr_chat
-
-
-
-
 
 
 def generate_summarize_ideas(persona, nodes, question):
@@ -236,7 +234,7 @@ def generate_summarize_ideas(persona, nodes, question):
   if response:
     summarized_idea = response[0]
   else:
-    print("ERROR: <generate_summarize_ideas>: Could not get summarized idea")
+    log("ERROR: <generate_summarize_ideas>: Could not get summarized idea")
     summarized_idea = ""
   return summarized_idea
 
@@ -253,7 +251,6 @@ def generate_next_line(persona, interlocutor_desc, curr_convo, summarized_idea):
                                                       summarized_idea)[0]  
   return next_line
 
-
 def generate_inner_thought(persona, whisper):
   inner_thought = run_gpt_prompt_generate_whisper_inner_thought(persona, whisper)[0]
   return inner_thought
@@ -269,12 +266,11 @@ def generate_action_event_triple(act_desp, persona):
   EXAMPLE OUTPUT: 
     "🧈🍞"
   """
-  if debug: print ("GNS FUNCTION: <generate_action_event_triple>")
+  if debug: log("GNS FUNCTION: <generate_action_event_triple>")
   return run_gpt_prompt_event_triple(act_desp, persona)[0]
 
-
 def generate_poig_score(persona, event_type, description): 
-  if debug: print ("GNS FUNCTION: <generate_poig_score>")
+  if debug: log("GNS FUNCTION: <generate_poig_score>")
 
   if "is idle" in description: 
     return 1
@@ -284,7 +280,7 @@ def generate_poig_score(persona, event_type, description):
     if response:
       return response[0]
     else:
-      print(
+      log(
         "ERROR: <generate_poig_score>: Could not get event/thought poignancy score"
       )
       return 0
@@ -295,9 +291,8 @@ def generate_poig_score(persona, event_type, description):
     if response:
       return response[0]
     else:
-      print("ERROR: <generate_poig_score>: Could not get chat poignancy score")
+      log("ERROR: <generate_poig_score>: Could not get chat poignancy score")
       return 0
-
 
 def load_history_via_whisper(personas, whispers, curr_time):
   for count, row in enumerate(whispers):
@@ -316,7 +311,6 @@ def load_history_via_whisper(personas, whispers, curr_time):
                               thought, keywords, thought_poignancy,
                               thought_embedding_pair, None)
 
-
 def open_convo_session(persona, convo_mode, safe_mode=True, direct=False, question: str=None): 
   if direct and question is None:
     raise ValueError("If direct is True, question must be provided.")
@@ -333,7 +327,7 @@ def open_convo_session(persona, convo_mode, safe_mode=True, direct=False, questi
         break
 
       if int(run_gpt_generate_safety_score(persona, line)[0]) >= 8 and safe_mode: 
-        print (f"{persona.scratch.name} is a computational agent, and as such, it may be inappropriate to attribute human agency to the agent in your communication.")        
+        log(f"{persona.scratch.name} is a computational agent, and as such, it may be inappropriate to attribute human agency to the agent in your communication.")        
 
       else: 
         retrieved = new_retrieve(persona, [line], 50)[line]

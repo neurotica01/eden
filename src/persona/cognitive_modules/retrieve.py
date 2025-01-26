@@ -254,8 +254,8 @@ def new_retrieve(persona, focal_points, n_count=30):
 
     master_out = top_highest_x_values(master_out, len(master_out.keys()))
     for key, val in master_out.items(): 
-      print (persona.a_mem.id_to_node[key].embedding_key, val)
-      print (persona.scratch.recency_w*recency_out[key]*1, 
+      log(persona.a_mem.id_to_node[key].embedding_key, val)
+      log(persona.scratch.recency_w*recency_out[key]*1, 
              persona.scratch.relevance_w*relevance_out[key]*1, 
              persona.scratch.importance_w*importance_out[key]*1)
 

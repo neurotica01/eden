@@ -6,6 +6,7 @@ Description: This defines the "Perceive" module for generative agents.
 """
 
 import sys
+from global_methods import log
 import math
 
 sys.path.append("../../")
@@ -27,7 +28,7 @@ def generate_poig_score(persona, event_type, description):
     if response:
       return response[0]
     else:
-      print(
+      log(
         "ERROR: <generate_poig_score>: Could not get event poignancy score."
       )
       return 0
@@ -38,7 +39,7 @@ def generate_poig_score(persona, event_type, description):
     if response:
       return response[0]
     else:
-      print(
+      log(
         "ERROR: <generate_poig_score>: Could not get chat poignancy score."
       )
       return 0

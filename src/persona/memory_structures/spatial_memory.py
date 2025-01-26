@@ -9,7 +9,8 @@ import json
 
 import sys
 sys.path.append('../../')
-from global_methods import check_if_file_exists
+from global_methods import check_if_file_exists, log
+from config import debug
 
 class MemoryTree: 
   def __init__(self, f_saved): 
@@ -23,12 +24,12 @@ class MemoryTree:
       dash = " >" * depth
       if type(tree) == type(list()): 
         if tree:
-          print (dash, tree)
+          log(dash, tree)
         return 
 
       for key, val in tree.items(): 
         if key: 
-          print (dash, key)
+          log(dash, key)
         _print_tree(val, depth+1)
     
     _print_tree(self.tree, 0)
@@ -118,4 +119,4 @@ if __name__ == '__main__':
   x = MemoryTree(x)
   x.print_tree()
 
-  print (x.get_str_accessible_sector_arenas("dolores double studio:double studio"))
+  log(x.get_str_accessible_sector_arenas("dolores double studio:double studio"))

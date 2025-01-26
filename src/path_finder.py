@@ -6,12 +6,13 @@ Description: Implements various path finding functions for generative agents.
 Some of the functions are defunct. 
 """
 import numpy as np
+from global_methods import log
 
 def print_maze(maze):
   for row in maze:
     for item in row:
-      print(item, end='')
-    print()
+      log(item, end='')
+    log()
 
 
 def path_finder_v1(maze, start, end, collision_block_char, verbose=False): 
@@ -46,7 +47,7 @@ def path_finder_v1(maze, start, end, collision_block_char, verbose=False):
     while len(stack) > 0:
       pos_r, pos_c = stack.pop()
       if verbose: 
-        print("Current position", pos_r, pos_c)
+        log("Current position", pos_r, pos_c)
       if maze[pos_r][pos_c] == 'E':
         path += [(pos_r, pos_c)]
         return path
@@ -68,7 +69,7 @@ def path_finder_v1(maze, start, end, collision_block_char, verbose=False):
 
       # To follow the maze
       if verbose: 
-        print('Stack:' , stack)
+        log('Stack:' , stack)
         print_maze(maze)
 
     # We didn't find a path, hence we do not need to return the path
@@ -232,8 +233,8 @@ def path_finder_3(maze, start, end, collision_block_char, verbose=False):
     b_path = curr_path[int(len(curr_path)/2)-1:]
   b_path.reverse()
 
-  print (a_path)
-  print (b_path)
+  log(a_path)
+  log(b_path)
   return a_path, b_path
 
 
@@ -248,18 +249,18 @@ if __name__ == '__main__':
           ['#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#', '#']]
   start = (0, 1)
   end = (0, 1)
-  print (path_finder(maze, start, end, "#"))
+  log(path_finder(maze, start, end, "#"))
 
-  print ("-===")
+  log("-===")
   start = (0, 1)
   end = (11, 4)
-  print (path_finder_2(maze, start, end, "#"))
+  log(path_finder_2(maze, start, end, "#"))
 
-  print ("-===")
+  log("-===")
   start = (0, 1)
   end = (12, 6)
-  print (path_finder_3(maze, start, end, "#"))
+  log(path_finder_3(maze, start, end, "#"))
 
-  print ("-===")
+  log("-===")
   path_finder_3(maze, start, end, "#")[0]
   path_finder_3(maze, start, end, "#")[1]

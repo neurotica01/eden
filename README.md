@@ -1,10 +1,6 @@
 
 
-# Generative Agents Collaboratively Mission-Planning 
-
-<p align="center" width="100%">
-<img src="cover.png" alt="Smallville" style="width: 80%; min-width: 300px; display: block; margin: auto;">
-</p>
+# Generative Agents  
 
 This repository is an evolution of the repository based on the paper "[Generative Agents: Interactive Simulacra of Human Behavior](https://arxiv.org/abs/2304.03442)."
 
@@ -17,64 +13,14 @@ _______________________________________
 _______________________________________
 
 ## Setting Up The Environment
+WIP upgrading the dependency hell. Seeking dependency heaven.
+`uv venv`
+`uv pip install -r real_requirements.txt`
 
-### Step 1. Conda Env
+Please set `OPENAI_API_KEY` (is it not set already?)
 
-Note: If you change the environment name from `simulacra`, you'll need to update the name in the upcoming bash scripts as well.
-```bash
-    conda create -n simulacra python=3.9.12 pip
-    conda activate simulacra
-    pip install -r requirements.txt
-```
-
-
-### Step 2. OpenAI Config
-
-Create a file called `openai_config.json` in the root directory.
-
-```json
-{
-    "client": "openai", 
-    "model": "gpt-4o-mini",
-    "model-key": "<API-KEY>",
-    "model-costs": {
-        "input":  0.5,
-        "output": 1.5
-    },
-    "embeddings-client": "openai",
-    "embeddings": "text-embedding-3-small",
-    "embeddings-key": "<API-KEY>",
-    "embeddings-costs": {
-        "input": 0.02,
-        "output": 0.0
-    },
-    "experiment-name": "simulacra-test",
-    "cost-upperbound": 10
-}
-```
-
-Feel free to change and test also other models (and change accordingly the input and output costs). Note that this repo uses OpenAI's Structured Outputs feature, which is currently only available for certain models, like the GPT-4o series. Check the OpenAI docs for more info. \
-The generation and the embedding models are configured separately to be able to use different clients.\
-Change also the `cost-upperbound` according to your needs (the cost computation is done using "[openai-cost-logger](https://github.com/drudilorenzo/openai-cost-logger)" and the costs are specified per million tokens).
-
-Next, you will (for now) also need to set up the `utils.py` file as described in the [original repo's README](README_origin.md). After creating the file as described there, add these lines to it and change them as necessary:
-
-```
-use_openai = True
-# If you're not using OpenAI, define api_model
-api_model = ""
-```
 
 ## Running a simulation
-
-> All of the following scripts accept two optional arguments to customize the conda setup:
-> - `--conda-path`: Path to your conda activate script (default: `/home/${USER}/anaconda3/bin/activate`)
-> - `--env-name`: Name of the conda environment to use (default: `simulacra`)
->
-> Example with custom conda setup:
-> ```bash
-> ./run_frontend.sh --conda-path /path/to/conda/activate --env-name my_env [other args...]
-> ```
 
 ### Step 1. Starting the Environment Server
 If you're running the backend in headless mode (see below), you can skip this step.

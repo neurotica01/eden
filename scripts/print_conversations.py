@@ -48,7 +48,7 @@ def write_conversations_to_file(conversations, simulation_name):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Please provide the simulation name as a command line argument.")
+        log("Please provide the simulation name as a command line argument.")
         sys.exit(1)
 
     simulation_name = sys.argv[1]
@@ -56,6 +56,6 @@ if __name__ == "__main__":
     
     if unique_conversations:
         write_conversations_to_file(unique_conversations, simulation_name)
-        print(f"Unique conversations written to {simulation_name}_highlights.txt")
+        log(f"Unique conversations written to {simulation_name}_highlights.txt")
     else:
-        print("No unique conversations found.")
+        log("No unique conversations found.")

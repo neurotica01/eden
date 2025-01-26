@@ -37,7 +37,7 @@ def get_unique_conversations(simulation_name):
                 except json.JSONDecodeError:
                     continue
                 except Exception as e:
-                    print(f"Error processing file {filename}: {e}")
+                    log(f"Error processing file {filename}: {e}")
                     continue
                 step+=1
 
@@ -48,12 +48,12 @@ def get_unique_conversations(simulation_name):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Please provide the simulation name as a command line argument.")
+        log("Please provide the simulation name as a command line argument.")
         sys.exit(1)
 
     simulation_name = sys.argv[1]
     '''
     unique_conversations = get_unique_conversations(simulation_name)
-    print(json.dumps(unique_conversations, indent=2))
+    log(json.dumps(unique_conversations, indent=2))
     '''
     get_unique_conversations(simulation_name)

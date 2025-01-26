@@ -14,6 +14,7 @@ from typing import Tuple, Union, Optional
 from pathlib import Path
 from datetime import datetime
 from multiprocessing import Process
+from global_methods import log
 # from openai_cost_logger import OpenAICostLoggerViz
 
 
@@ -111,7 +112,7 @@ def start_web_tab(ui, browser_path: str, port: str) -> Optional[int]:
         Optional[int]: The process id of the web tab (only for headless chrome).
     """
     url = f"http://localhost:{port}/simulator_home"
-    print("(Auto-Exec): Opening the simulator home page", flush=True)
+    log("(Auto-Exec): Opening the simulator home page", flush=True)
     time.sleep(5)
     pid = None
     try:
@@ -134,10 +135,10 @@ def start_web_tab(ui, browser_path: str, port: str) -> Optional[int]:
 
             process = subprocess.Popen(command)
             pid = process.pid
-            print(f"(Auto-Exec): Web tab process started with pid {pid}", flush=True)
+            log(f"(Auto-Exec): Web tab process started with pid {pid}", flush=True)
         return pid
     except Exception as e:
-        print(e, flush=True)
+        log(e, flush=True)
 
 
 def get_new_checkpoint(step: int, tot_steps: int, checkpoint_freq: int) -> int:
@@ -170,7 +171,7 @@ def save_checkpoint(rs, idx: int) -> Tuple[str, int, int]:
     """
     target = rs.sim_code
     rs.open_server(input_command="fin")
-    print(f"(Auto-Exec): Checkpoint saved: {target}", flush=True)    
+    log(f"(Auto-Exec): Checkpoint saved: {target}", flush=True)    
     return target, get_starting_step(target), idx+1
     
 
@@ -181,7 +182,7 @@ def load_agent_history(rs, history_file: str) -> None:
         rs (ReverieServer): The reverie server instance
         history_file (str): Path to the history file to load
     """
-    print(f"(Auto-Exec): Loading agent history from {history_file}", flush=True)
+    log(f"(Auto-Exec): Loading agent history from {history_file}", flush=True)
     rs.open_server(input_command=f"call -- load history {history_file}")
 
 
@@ -198,18 +199,18 @@ if __name__ == '__main__':
     tot_steps = int(tot_steps)
     curr_checkpoint = get_new_checkpoint(current_step, tot_steps, checkpoint_freq)
 
-    print("(Auto-Exec): STARTING THE EXPERIMENT", flush=True)
-    print(f"(Auto-Exec): Origin: {origin}", flush=True)
-    print(f"(Auto-Exec): Target: {target}", flush=True)
-    print(f"(Auto-Exec): Total steps: {tot_steps}", flush=True)
-    print(f"(Auto-Exec): Checkpoint Freq: {checkpoint_freq}", flush=True)
+    log("(Auto-Exec): STARTING THE EXPERIMENT", flush=True)
+    log(f"(Auto-Exec): Origin: {origin}", flush=True)
+    log(f"(Auto-Exec): Target: {target}", flush=True)
+    log(f"(Auto-Exec): Total steps: {tot_steps}", flush=True)
+    log(f"(Auto-Exec): Checkpoint Freq: {checkpoint_freq}", flush=True)
 
     while current_step < tot_steps:
         try:
             steps_to_run = curr_checkpoint - current_step
             target = f"{exp_name}-s-{idx}-{current_step}-{curr_checkpoint}"
-            print(f"(Auto-Exec): STAGE {idx}", flush=True)
-            print(f"(Auto-Exec): Running experiment '{exp_name}' from step '{current_step}' to '{curr_checkpoint}'", flush=True)
+            log(f"(Auto-Exec): STAGE {idx}", flush=True)
+            log(f"(Auto-Exec): Running experiment '{exp_name}' from step '{current_step}' to '{curr_checkpoint}'", flush=True)
             rs = reverie.ReverieServer(origin, target)
 
             # Load agent history if provided
@@ -228,16 +229,16 @@ if __name__ == '__main__':
             elif ui is None:
                 rs.open_server(input_command=f"headless {steps_to_run}")
         except KeyboardInterrupt:
-            print("(Auto-Exec): KeyboardInterrupt: Stopping the experiment.", flush=True)
+            log("(Auto-Exec): KeyboardInterrupt: Stopping the experiment.", flush=True)
             sys.exit(0)
         except Exception as e:
-            print(e, flush=True)
+            log(e, flush=True)
             traceback.print_exc()
 
             if len(e.args) > 2 and e.args[2] == "stepback":
                 curr_stepbacks += 1
                 if curr_stepbacks > max_stepbacks:
-                    print(f"(Auto-Exec): Maximum consecutive stepbacks reached. Aborting the experiment.", flush=True)
+                    log(f"(Auto-Exec): Maximum consecutive stepbacks reached. Aborting the experiment.", flush=True)
                     break
             else:
                 curr_stepbacks = 0
@@ -248,8 +249,8 @@ if __name__ == '__main__':
             else:
                 shutil.rmtree(f"../../environment/frontend_server/storage/{target}") # Remove the experiment folder if no steps were run
 
-            print(f"(Auto-Exec): Error at step {current_step}", flush=True)
-            print(f"(Auto-Exec): Exception {e.args[0]}", flush=True)
+            log(f"(Auto-Exec): Error at step {current_step}", flush=True)
+            log(f"(Auto-Exec): Exception {e.args[0]}", flush=True)
         else:
             origin, current_step, idx = save_checkpoint(rs, idx)
             curr_checkpoint = get_new_checkpoint(current_step, tot_steps, checkpoint_freq)
@@ -263,11 +264,11 @@ if __name__ == '__main__':
         
             if pid:
                 os.system(f"kill -9 {pid}")
-                print(f"(Auto-Exec): Killed web tab process with pid {pid}", flush=True)
+                log(f"(Auto-Exec): Killed web tab process with pid {pid}", flush=True)
                 pid = None
 
-    print(f"(Auto-Exec): EXPERIMENT FINISHED: {exp_name}")
+    log(f"(Auto-Exec): EXPERIMENT FINISHED: {exp_name}")
     # OpenAICostLoggerViz.print_experiment_cost(experiment=exp_name, path=log_path)
     # OpenAICostLoggerViz.print_total_cost(path=log_path)
-    print(f"(Auto-Exec): Execution time: {datetime.now() - start_time}")
+    log(f"(Auto-Exec): Execution time: {datetime.now() - start_time}")
     sys.exit(0)

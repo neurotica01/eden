@@ -356,7 +356,7 @@ class Scratch:
 
       return curr_index
     else:
-      print(
+      log(
         "ERROR: <get_f_daily_schedule_index> in scratch.py: self.curr_time is None."
       )
 
@@ -388,7 +388,7 @@ class Scratch:
         curr_index += 1
       return curr_index
     else:
-      print(
+      log(
         "ERROR: <get_f_daily_schedule_hourly_org_index> in scratch.py: self.curr_time is None."
       )
 
@@ -567,7 +567,7 @@ class Scratch:
           x = x + datetime.timedelta(minutes=1)
         end_time = x + datetime.timedelta(minutes=self.act_duration)
       else:
-        print(
+        log(
           "ERROR: <act_check_finished> in scratch.py: Either self.act_start_time or self.act_duration is None."
         )
         return
@@ -577,7 +577,7 @@ class Scratch:
         return True
       return False
     else:
-      print(
+      log(
         "ERROR: <act_check_finished> in scratch.py: Either end_time or self.curr_time is None."
       )
       return

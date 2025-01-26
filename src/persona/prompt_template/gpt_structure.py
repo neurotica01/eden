@@ -12,6 +12,7 @@ import traceback
 import os
 from openai import AzureOpenAI, OpenAI
 from config import openai_api_key, use_openai, api_model
+from global_methods import log
 
 config_path = Path("openai_config.json")
 with open(config_path, "r") as f:
@@ -112,8 +113,8 @@ def temp_sleep(seconds=0.1):
 def ChatGPT_single_request(prompt):
   temp_sleep()
 
-  print("--- ChatGPT_single_request() ---")
-  print("Prompt:", prompt)
+  log("--- ChatGPT_single_request() ---")
+  log("Prompt:", prompt)
 
   completion = client.chat.completions.create(
     model=openai_config["model"],
@@ -121,13 +122,13 @@ def ChatGPT_single_request(prompt):
   )
 
   content = completion.choices[0].message.content
-  print("Response content:", content)
+  log("Response content:", content)
 
   if content:
     content = content.strip("`").removeprefix("json").strip()
     return content
   else:
-    print("ERROR: No message content from LLM.")
+    log("ERROR: No message content from LLM.")
     return ""
 
   # completion = openai.ChatCompletion.create(
@@ -139,7 +140,7 @@ def ChatGPT_single_request(prompt):
   # try:
   #   response = llm( prompt)
   # except:
-  #   print("Requested tokens exceed context window")
+  #   log("Requested tokens exceed context window")
   #   ### TODO: Add map-reduce or splitter to handle this error.
   #   prompt = prompt.split(" ")[-1400:]
   #   prompt = str(' '.join(prompt))
@@ -161,8 +162,8 @@ def ChatGPT_request(prompt):
     a str of GPT-3's response. 
   """
   # temp_sleep()
-  print("--- ChatGPT_request() ---")
-  print("Prompt:", prompt)
+  log("--- ChatGPT_request() ---")
+  log("Prompt:", prompt)
 
   try: 
     completion = client.chat.completions.create(
@@ -170,15 +171,15 @@ def ChatGPT_request(prompt):
       messages=[{"role": "user", "content": prompt}]
     )
     content = completion.choices[0].message.content
-    print("Response content:", content)
-    print("Usage:", completion.usage)
+    log("Response content:", content)
+    log("Usage:", completion.usage)
     
     if content:
       content = content.strip("`").removeprefix("json").strip()
     return content
   
   except Exception as e: 
-    print(f"Error: {e}")
+    log(f"Error: {e}")
     traceback.print_exc()
     return "LLM ERROR"
 
@@ -195,8 +196,8 @@ def ChatGPT_structured_request(prompt, response_format):
     a str of GPT-3's response. 
   """
   # temp_sleep()
-  print("--- ChatGPT_request() ---")
-  print("Prompt:", prompt)
+  log("--- ChatGPT_request() ---")
+  log("Prompt:", prompt)
 
   try: 
     completion = client.beta.chat.completions.parse(
@@ -205,8 +206,8 @@ def ChatGPT_structured_request(prompt, response_format):
       messages=[{"role": "user", "content": prompt}]
     )
 
-    print("Response:", completion)
-    print("Usage:", completion.usage)
+    log("Response:", completion)
+    log("Usage:", completion.usage)
     message = completion.choices[0].message
 
     if message.parsed:
@@ -216,7 +217,7 @@ def ChatGPT_structured_request(prompt, response_format):
     raise ValueError("No parsed content or refusal found.")
 
   except Exception as e:
-    print(f"Error: {e}")
+    log(f"Error: {e}")
     traceback.print_exc() 
     return "LLM ERROR"
 
@@ -240,8 +241,8 @@ def ChatGPT_structured_request(prompt, response_format):
 #     prompt += '{"output": "' + str(example_output) + '"}'
 
 #     if verbose:
-#       print("CHAT GPT PROMPT")
-#       print(prompt)
+#       log("CHAT GPT PROMPT")
+#       log(prompt)
 
 #     for i in range(repeat):
 #       try:
@@ -257,12 +258,12 @@ def ChatGPT_structured_request(prompt, response_format):
 #           return func_clean_up(curr_gpt_response, prompt=prompt)
 
 #         if verbose:
-#           print("---- repeat count: \n", i, curr_gpt_response)
-#           print(curr_gpt_response)
-#           print("~~~~")
+#           log("---- repeat count: \n", i, curr_gpt_response)
+#           log(curr_gpt_response)
+#           log("~~~~")
 
 #       except Exception as e:
-#         print("ERROR:", e)
+#         log("ERROR:", e)
 
 #   return False
 
@@ -289,8 +290,8 @@ def ChatGPT_safe_generate_response(
         prompt += '{"output": "' + str(example_output) + '"}'
 
     if verbose:
-      print("LLM PROMPT")
-      print(prompt)
+      log("LLM PROMPT")
+      log(prompt)
 
     for i in range(repeat):
       try:
@@ -304,19 +305,19 @@ def ChatGPT_safe_generate_response(
           curr_gpt_response = json.loads(curr_gpt_response)["output"]
 
         if verbose:
-          print("---- repeat count:", i)
-          print("~~~~ curr_gpt_response:")
-          print(curr_gpt_response)
-          print("~~~~")
+          log("---- repeat count:", i)
+          log("~~~~ curr_gpt_response:")
+          log(curr_gpt_response)
+          log("~~~~")
 
         if func_validate(curr_gpt_response, prompt=prompt):
           return func_clean_up(curr_gpt_response, prompt=prompt)
 
       except Exception as e:
-        print("ERROR:", e)
+        log("ERROR:", e)
         traceback.print_exc()
 
-  print("FAIL SAFE TRIGGERED")
+  log("FAIL SAFE TRIGGERED")
   return fail_safe_response
 
 
@@ -343,8 +344,8 @@ def ChatGPT_safe_generate_structured_response(
         prompt += str(example_output)
 
     if verbose:
-      print("LLM PROMPT")
-      print(prompt)
+      log("LLM PROMPT")
+      log(prompt)
 
     for i in range(repeat):
       try:
@@ -353,10 +354,10 @@ def ChatGPT_safe_generate_structured_response(
           raise ValueError("No valid response from LLM.")
 
         if verbose:
-          print("---- repeat count:", i)
-          print("~~~~ curr_gpt_response:")
-          print(curr_gpt_response)
-          print("~~~~")
+          log("---- repeat count:", i)
+          log("~~~~ curr_gpt_response:")
+          log(curr_gpt_response)
+          log("~~~~")
 
         if (
           not isinstance(curr_gpt_response, str)
@@ -365,7 +366,7 @@ def ChatGPT_safe_generate_structured_response(
           return func_clean_up(curr_gpt_response, prompt=prompt)
 
       except Exception as e:
-        print("ERROR:", e)
+        log("ERROR:", e)
         traceback.print_exc()
 
   return fail_safe_response
@@ -407,14 +408,14 @@ def GPT_request(prompt, gpt_parameter):
     else:
       response = client.completions.create(model=model, prompt=prompt)
 
-    print("Response: ", response)
+    log("Response: ", response)
     content = response.choices[0].message.content
-    print("Content: ", content)
+    log("Content: ", content)
     return content
 
   except Exception as e:
-    print("REQUEST ERROR")
-    print(e)
+    log("REQUEST ERROR")
+    log(e)
     return "REQUEST ERROR"
 
 
@@ -453,7 +454,7 @@ def GPT_structured_request(prompt, gpt_parameter, response_format):
     else:
       response = client.completions.create(model=model, prompt=prompt)
 
-    print("Response: ", response)
+    log("Response: ", response)
     message = response.choices[0].message
 
     if message.parsed:
@@ -462,7 +463,7 @@ def GPT_structured_request(prompt, gpt_parameter, response_format):
       raise ValueError("Request refused: " + message.refusal)
     raise ValueError("No parsed content or refusal found.")
   except Exception as e:
-    print("REQUEST ERROR")
+    log("REQUEST ERROR")
     traceback.print_exc()
     return "REQUEST ERROR"
 
@@ -503,7 +504,7 @@ def safe_generate_response(prompt,
                            func_clean_up=None,
                            verbose=False): 
   if verbose: 
-    print (prompt)
+    log(prompt)
 
   if func_validate and func_clean_up:
     for i in range(repeat):
@@ -512,15 +513,15 @@ def safe_generate_response(prompt,
         if func_validate(curr_gpt_response, prompt=prompt):
           return func_clean_up(curr_gpt_response, prompt=prompt)
         else:
-          print("Response validation failed.")
+          log("Response validation failed.")
       except:
-        print("Could not process response.")
+        log("Could not process response.")
       if verbose:
-        print("---- repeat count: ", i, curr_gpt_response)
-        print(curr_gpt_response)
-        print("~~~~")
+        log("---- repeat count: ", i, curr_gpt_response)
+        log(curr_gpt_response)
+        log("~~~~")
 
-  print("FAIL SAFE TRIGGERED")
+  log("FAIL SAFE TRIGGERED")
   return fail_safe_response
 
 
@@ -535,7 +536,7 @@ def safe_generate_structured_response(
   verbose=False
 ):
   if verbose:
-    print(prompt)
+    log(prompt)
 
   if func_validate and func_clean_up:
     for i in range(repeat):
@@ -546,15 +547,15 @@ def safe_generate_structured_response(
           prompt=prompt
         ):
           return func_clean_up(curr_gpt_response, prompt=prompt)
-        print("Response validation failed.")
+        log("Response validation failed.")
       except:
-        print("Could not process response.")
+        log("Could not process response.")
       if verbose:
-        print("---- repeat count: ", i, curr_gpt_response)
-        print(curr_gpt_response)
-        print("~~~~")
+        log("---- repeat count: ", i, curr_gpt_response)
+        log(curr_gpt_response)
+        log("~~~~")
 
-  print("FAIL SAFE TRIGGERED")
+  log("FAIL SAFE TRIGGERED")
   return fail_safe_response
 
 
@@ -563,7 +564,7 @@ def get_embedding(text, model=openai_config["embeddings"]):
   if not text: 
     text = "this is blank"
   response = embeddings_client.embeddings.create(input=[text], model=model)
-  print("Embedding usage:", response.usage)
+  log("Embedding usage:", response.usage)
   return response.data[0].embedding
 
 # def get_embedding(documents):
@@ -601,4 +602,4 @@ if __name__ == '__main__':
                                  __func_clean_up,
                                  True)
 
-  print (output)
+  log(output)

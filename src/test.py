@@ -28,7 +28,7 @@ def ChatGPT_request(prompt):
     return completion.choices[0].message.content
   
   except: 
-    print ("ChatGPT ERROR")
+    log("ChatGPT ERROR")
     return "ChatGPT ERROR"
 
 prompt = """
@@ -57,7 +57,7 @@ Example output json:
 """
 
 
-print (ChatGPT_request(prompt))
+log(ChatGPT_request(prompt))
 
 
 

@@ -17,4 +17,4 @@ use_openai = True
 api_model = "gpt-4o"
 
 # Verbose 
-debug = True
+debug = False

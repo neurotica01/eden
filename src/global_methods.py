@@ -9,10 +9,43 @@ import csv
 import os
 import numpy
 import shutil, errno
-from typing import TextIO
-
+from typing import TextIO, Any
+from datetime import datetime
 from os import listdir
 
+class Logger:
+    def __init__(self):
+        self.file_handle: TextIO | None = None
+        self.current_date = None
+        self._ensure_file_handle()
+    
+    def _ensure_file_handle(self) -> None:
+        current_date = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        if self.current_date != current_date:
+            if self.file_handle:
+                self.file_handle.close()
+            self.current_date = current_date
+            self.file_handle = open(f"log/{current_date}.txt", "a")
+    
+    def log(self, content: Any, tee_to_console: bool = False) -> None:
+        self._ensure_file_handle()
+        log_string = str(content)
+        self.file_handle.write(log_string + "\n")
+        self.file_handle.flush()  # Ensure it's written immediately
+        
+        if tee_to_console:
+            print(log_string)
+    
+    def __del__(self):
+        if self.file_handle:
+            self.file_handle.close()
+
+# Create a global logger instance
+logger = Logger()
+
+# The actual log function that can be imported and used
+def log(content: Any, tee_to_console: bool = False) -> None:
+    logger.log(content, tee_to_console)
 
 def create_folder_if_not_there(curr_path):
   """

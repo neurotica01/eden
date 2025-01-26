@@ -10,6 +10,7 @@ Description: For printing prompts when the setting for verbose is set to True.
 ##############################################################################
 
 
+from global_methods import log
 def print_run_prompts(
     prompt_template=None,
     persona=None,
@@ -18,16 +19,16 @@ def print_run_prompts(
     prompt=None,
     output=None,
 ):
-    print(f"=== {prompt_template}")
-    print("~~~ persona    ---------------------------------------------------")
-    print(persona.name if persona else "None", "\n")
-    print("~~~ gpt_param ----------------------------------------------------")
-    print(gpt_param, "\n")
-    print("~~~ prompt_input    ----------------------------------------------")
-    print(prompt_input, "\n")
-    print("~~~ prompt    ----------------------------------------------------")
-    print(prompt, "\n")
-    print("~~~ processed final output    ----------------------------------------------------")
-    print(output, "\n")
-    print("=== END ==========================================================")
-    print("\n\n\n")
+    log(f"=== {prompt_template}", tee_to_console=True)
+    log("~~~ persona    ---------------------------------------------------")
+    log(persona.name if persona else "None")
+    log("~~~ gpt_param ----------------------------------------------------")
+    log(gpt_param)
+    log("~~~ prompt_input    ----------------------------------------------")
+    log(prompt_input)
+    log("~~~ prompt    ----------------------------------------------------")
+    log(prompt)
+    log("~~~ processed final output    ----------------------------------------------------")
+    log(output, tee_to_console=True)
+    log("=== END ==========================================================")
+    log("\n\n\n")
