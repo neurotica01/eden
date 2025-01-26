@@ -10,7 +10,7 @@ from pathlib import Path
 import time
 import traceback
 from openai import AzureOpenAI, OpenAI
-from reverie.backend_server.utils import openai_api_key, use_openai, api_model
+from config import openai_api_key, use_openai, api_model
 
 config_path = Path("../../openai_config.json")
 with open(config_path, "r") as f:

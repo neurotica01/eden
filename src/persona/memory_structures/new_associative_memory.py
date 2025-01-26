@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Literal, Optional, List, Set
 import sqlite3
 import numpy as np
-from concept_node import ConceptNode
 
 MemoryType = Literal["event", "thought", "chat"]
 
@@ -162,7 +161,7 @@ class VectorMemory:
                       +  description.split("(")[-1][:-1])
 
       # Creating the <ConceptNode> object.
-      node = ConceptNode(node_id, node_count, type_count, node_type, depth,
+      node = MemoryNode(node_id, node_count, type_count, node_type, depth,
                         created, expiration, 
                         s, p, o, 
                         description, embedding_pair[0], 
@@ -246,7 +245,7 @@ class VectorMemory:
       depth = 0
 
       # Creating the <ConceptNode> object.
-      node = ConceptNode(node_id, node_count, type_count, node_type, depth,
+      node = MemoryNode(node_id, node_count, type_count, node_type, depth,
                         created, expiration, 
                         s, p, o, 
                         description, embedding_pair[0], poignancy, keywords, filling)

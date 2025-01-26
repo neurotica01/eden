@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BACKEND_SCRIPT_PATH="reverie/backend_server"
+BACKEND_SCRIPT_PATH="src/"
 BACKEND_SCRIPT_FILE="reverie.py"
 # VENV_PATH=".venv"
 LOGS_PATH="../../logs"
