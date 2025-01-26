@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Optional, List, Set
 import sqlite3
+import os
 import numpy as np
 
 MemoryType = Literal["event", "thought", "chat"]
@@ -27,6 +28,16 @@ class MemoryNode:
     expiration: Optional[datetime] = None
 
 
+    def __eq__(self, other):                                                                                                           
+        """Allow direct comparison of MemoryNodes"""                                                                                   
+        if not isinstance(other, MemoryNode):                                                                                          
+            return False                                                                                                               
+        return self.id == other.id                                                                                                     
+                                                                                                                                        
+    def __hash__(self):                                                                                                                
+        """Allow MemoryNodes to be used in sets"""                                                                                     
+        return hash(self.id)   
+
     def spo_summary(self): 
       return (self.subject, self.predicate, self.object)
 
@@ -35,7 +46,8 @@ class VectorMemory:
     """SQLite-backed memory storage with vector search capabilities"""
     
     def __init__(self, db_path: str = ":memory:"):
-        self.db = sqlite3.connect(db_path)
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        self.db = sqlite3.connect(db_path + '/memory.db')
         self._init_schema()
         
     def _init_schema(self):
@@ -206,7 +218,7 @@ class VectorMemory:
         pass
 
       # Creating the <ConceptNode> object.
-      node = ConceptNode(node_id, node_count, type_count, node_type, depth,
+      node = MemoryNode(node_id, node_count, type_count, node_type, depth,
                         created, expiration, 
                         s, p, o, 
                         description, embedding_pair[0], poignancy, keywords, filling)

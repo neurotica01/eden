@@ -6,7 +6,7 @@ from src.persona.memory_structures.associative_memory import AssociativeMemory, 
 @pytest.fixture
 def sample_memory(tmp_path):
     # Create temporary test files
-    memory_dir = tmp_path / "memory"
+    memory_dir = tmp_path
     memory_dir.mkdir()
     
     # Create empty initial files
@@ -276,7 +276,7 @@ def test_retrieve_relevant_events(sample_memory):
         p="goes to",
         o="store",
         description="John goes to the store",
-        keywords={"store", "shopping"},
+        keywords={"store", "shopping", "John"},
         poignancy=0.5,
         embedding_pair=("key16", [0.1, 0.2, 0.3]),
         filling=None
@@ -289,14 +289,14 @@ def test_retrieve_relevant_events(sample_memory):
         p="shops at",
         o="mall",
         description="Jane shops at the mall",
-        keywords={"mall", "shopping"},
+        keywords={"mall", "shop", "Jane"},
         poignancy=0.5,
         embedding_pair=("key17", [0.4, 0.5, 0.6]),
         filling=None
     )
     
     # Test retrieval by subject
-    relevant = sample_memory.retrieve_relevant_events("John", "", "")
+    relevant = sample_memory.retrieve_relevant_events("John", "","")
     assert len(relevant) == 1
     assert event1 in relevant
     

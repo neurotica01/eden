@@ -133,3 +133,4 @@ ENV/
 .ropeproject
 
 .history/
+.aider*

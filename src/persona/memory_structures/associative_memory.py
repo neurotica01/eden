@@ -43,6 +43,10 @@ class ConceptNode:
 
 
 class AssociativeMemory: 
+
+  def __str__(self) -> str:
+    return f"AssociativeMemory(id_to_node={self.id_to_node}, seq_event={self.seq_event}, seq_thought={self.seq_thought}, seq_chat={self.seq_chat}, kw_to_event={self.kw_to_event}, kw_to_thought={self.kw_to_thought}, kw_to_chat={self.kw_to_chat}, kw_strength_event={self.kw_strength_event}, kw_strength_thought={self.kw_strength_thought}, embeddings={self.embeddings})"
+
   def __init__(self, f_saved): 
     self.id_to_node = dict()
 
@@ -289,8 +293,8 @@ class AssociativeMemory:
 
   def get_str_seq_chats(self): 
     ret_str = ""
-    for count, event in enumerate(self.seq_chat): 
-      ret_str += f"with {event.object.content} ({event.description})\n"
+    for count, event in enumerate(self.seq_chat):
+      ret_str += f"with {event.object} ({event.description})\n"
       ret_str += f'{event.created.strftime("%B %d, %Y, %H:%M:%S")}\n'
       for row in event.filling: 
         ret_str += f"{row[0]}: {row[1]}\n"

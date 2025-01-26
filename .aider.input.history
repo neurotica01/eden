@@ -85,3 +85,145 @@
 
 # 2025-01-25 10:52:30.490492
 +n
+
+# 2025-01-26 11:47:39.217403
++/code
+
+# 2025-01-26 11:48:18.860891
++y
+
+# 2025-01-26 11:49:09.404163
++hey do you see associative_memory.py ? and new_associative_memory.py
+
+# 2025-01-26 11:49:12.069400
++y
+
+# 2025-01-26 11:50:35.659922
++anyway. can you write some tests for associateive memory to give confidence in switching over? thanks
+
+# 2025-01-26 11:53:24.395691
++hi - can you write some tests for associative_memory.py
+
+# 2025-01-26 11:53:25.699609
++y
+
+# 2025-01-26 11:54:03.352054
++/run pip install pytest
+
+# 2025-01-26 11:54:03.352279
++/run pip install pytest
+
+# 2025-01-26 11:54:08.229418
++y
+
+# 2025-01-26 11:54:09.403707
++/run python -m pytest tests/test_associative_memory.py -v
+
+# 2025-01-26 11:54:09.403904
++/run python -m pytest tests/test_associative_memory.py -v
+
+# 2025-01-26 11:54:13.350809
++n
+
+# 2025-01-26 11:55:36.972088
++i have a test. assosciated memory. how to run it?
+
+# 2025-01-26 11:55:46.942776
++y
+
+# 2025-01-26 11:55:55.052049
++/run python -m pytest tests/test_associative_memory.py -v
+
+# 2025-01-26 11:55:55.052160
++/run python -m pytest tests/test_associative_memory.py -v
+
+# 2025-01-26 11:57:15.979277
++hey - you see how there's an old and a new associateive memory? i want the tests to cover all the methods in the old one so i can switch to the new
+
+# 2025-01-26 11:58:26.167144
++y
+
+# 2025-01-26 11:59:43.306829
++n
+
+# 2025-01-26 12:00:01.890253
++E       assert 'John goes to store' in "('Event', 1, ': ', ('John', 'goes to', 'store'), ' -- ', 'John goes to the store')\n"
++
++tests/test_associative_memory.py:258: AssertionError --- so this test is wrong (need to test existing behavior)
+
+# 2025-01-26 12:00:38.846164
++y
+
+# 2025-01-26 12:00:38.849526
++/run python -m pytest tests/test_associative_memory.py -v
+
+# 2025-01-26 12:00:38.849606
++/run python -m pytest tests/test_associative_memory.py -v
+
+# 2025-01-26 12:00:41.878052
++y
+
+# 2025-01-26 12:00:50.770541
++seems there is still a slight problem
+
+# 2025-01-26 12:01:13.353229
++undo
+
+# 2025-01-26 12:01:16.088796
++/und
+
+# 2025-01-26 12:01:52.584980
++wait did you just edit the actual code? that's no good, right now we're doing a refactor so we write tests on the old code, and then modify the new code
+
+# 2025-01-26 12:57:31.740278
++/ask
+
+# 2025-01-26 12:58:06.749114
++yo - ok so walk me through this project please. let's start with the memory structures
+
+# 2025-01-26 12:59:37.657529
++sure so - i guess the new vector searchpart. what was it like before? how does the new vector search work? how are words embedded? is it just cosinesimilarity? what's the "threshhold" or is it top n
+
+# 2025-01-26 13:01:04.929410
++does the test_associative_memory use chatgpt for the embeddings in the tests?
+
+# 2025-01-26 13:01:14.081061
++y
+
+# 2025-01-26 13:02:30.629651
++nah. i think the testGetRelevantMemories (not the actual name), is probably bad because without actual embeddings the tests don't mean much. can you make a test_associative_memory_hot.py and write a couple tests for getRelevantEvents using real gpt?
+
+# 2025-01-26 13:06:19.959203
++ImportError while importing test module '/home/bbecker/projects/eden/tests/test_associative_memory_hot.py'.
++Hint: make sure your test modules/packages have valid Python names.
++Traceback:
++/usr/lib/python3.8/importlib/__init__.py:127: in import_module
++    return _bootstrap._gcd_import(name[level:], package, level)
++tests/test_associative_memory_hot.py:5: in <module>
++    from src.persona.prompt_template.gpt_structure import get_embedding
++src/persona/prompt_template/gpt_structure.py:14: in <module>
++    from config import openai_api_key, use_openai, api_model
++E   ModuleNotFoundError: No module named 'config' -- ran into this issue
+
+# 2025-01-26 13:06:40.092326
++n
+
+# 2025-01-26 13:27:10.298297
++hey so - you see test_associative_memoory_hot.py? test fails. which is surprising to me. returns nothing. are we not writing to sql lite at all?
+
+# 2025-01-26 13:40:43.846208
++    def __init__(self, db_path: str = ":memory:"):
++        os.makedirs(os.path.dirname(db_path), exist_ok=True)
++>       self.db = sqlite3.connect(db_path)
++E       sqlite3.OperationalError: unable to open database file
++
++src/persona/memory_structures/new_associative_memory.py:40: OperationalError
+
+# 2025-01-26 13:43:37.420906
++what does `AssociativeMemory`
+
+# 2025-01-26 13:44:00.157954
++what does `AssociativeMemory`::id_to_node do? do we have an equivalent in the src/persona/memory_structures/new_associative_memory.py? do we need it?
+
+# 2025-01-26 13:44:02.350764
++y
