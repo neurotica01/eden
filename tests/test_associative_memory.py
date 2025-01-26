@@ -255,15 +255,13 @@ def test_get_str_seq_methods(sample_memory):
     
     # Test string representations
     events_str = sample_memory.get_str_seq_events()
-    assert "John goes to store" in events_str
-    assert "Event" in events_str
+    assert str(('Event', 1, ': ', ('John', 'goes to', 'store'), ' -- ', 'John goes to the store')) in events_str
     
     thoughts_str = sample_memory.get_str_seq_thoughts()
-    assert "John thinks about dinner" in thoughts_str
-    assert "Thought" in thoughts_str
+    assert str(('Thought', 1, ': ', ('John', 'thinks about', 'dinner'), ' -- ', 'John thinks about dinner')) in thoughts_str
     
     chats_str = sample_memory.get_str_seq_chats()
-    assert "Chat about weather" in chats_str
+    assert "with Jane (Chat about weather)" in chats_str
     assert "John: Nice weather" in chats_str
     assert "Jane: Yes!" in chats_str
 
