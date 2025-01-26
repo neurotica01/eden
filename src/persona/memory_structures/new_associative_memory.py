@@ -222,110 +222,166 @@ class VectorMemory:
         return node
 
 
-    def add_thought(self, created, expiration, s, p, o, 
-                          description, keywords, poignancy, 
-                          embedding_pair, filling):
-      # Setting up the node ID and counts.
-      node_count = len(self.id_to_node.keys()) + 1
-      type_count = len(self.seq_thought) + 1
-      node_type = "thought"
-      node_id = f"node_{str(node_count)}"
-      depth = 1 
-      try: 
-        if filling: 
-          depth += max([self.id_to_node[i].depth for i in filling])
-      except: 
-        pass
-
-      # Creating the <ConceptNode> object.
-      node = MemoryNode(node_id, node_count, type_count, node_type, depth,
-                        created, expiration, 
-                        s, p, o, 
-                        description, embedding_pair[0], poignancy, keywords, filling)
-
-      # Creating various dictionary cache for fast access. 
-      self.seq_thought[0:0] = [node]
-      keywords = [i.lower() for i in keywords]
-      for kw in keywords: 
-        if kw in self.kw_to_thought: 
-          self.kw_to_thought[kw][0:0] = [node]
-        else: 
-          self.kw_to_thought[kw] = [node]
-      self.id_to_node[node_id] = node 
-
-      # Adding in the kw_strength
-      if f"{p} {o}" != "is idle":  
-        for kw in keywords: 
-          if kw in self.kw_strength_thought: 
-            self.kw_strength_thought[kw] += 1
-          else: 
-            self.kw_strength_thought[kw] = 1
-
-      self.embeddings[embedding_pair[0]] = embedding_pair[1]
-
-      return node
-
-
-    def add_chat(self, created, expiration, s, p, o, 
-                      description, keywords, poignancy, 
-                      embedding_pair, filling): 
-      # Setting up the node ID and counts.
-      node_count = len(self.id_to_node.keys()) + 1
-      type_count = len(self.seq_chat) + 1
-      node_type = "chat"
-      node_id = f"node_{str(node_count)}"
-      depth = 0
-
-      # Creating the <ConceptNode> object.
-      node = MemoryNode(node_id, node_count, type_count, node_type, depth,
-                        created, expiration, 
-                        s, p, o, 
-                        description, embedding_pair[0], poignancy, keywords, filling)
-
-      # Creating various dictionary cache for fast access. 
-      self.seq_chat[0:0] = [node]
-      keywords = [i.lower() for i in keywords]
-      for kw in keywords: 
-        if kw in self.kw_to_chat: 
-          self.kw_to_chat[kw][0:0] = [node]
-        else: 
-          self.kw_to_chat[kw] = [node]
-      self.id_to_node[node_id] = node 
-
-      self.embeddings[embedding_pair[0]] = embedding_pair[1]
-          
-      return node
+    def add_thought(self, created, expiration, s, p, o,
+                   description, keywords, poignancy,
+                   embedding_pair, filling=None):
+        """Add a thought memory"""
+        # Get current counts
+        cursor = self.db.execute("SELECT COUNT(*) FROM memories")
+        total_count = cursor.fetchone()[0] + 1
+        
+        cursor = self.db.execute("SELECT COUNT(*) FROM memories WHERE type='thought'")
+        type_count = cursor.fetchone()[0] + 1
+        
+        node_id = f"node_{str(total_count)}"
+        
+        # Calculate depth
+        depth = 1
+        if filling:
+            # Get max depth of referenced nodes
+            placeholders = ','.join('?' * len(filling))
+            cursor = self.db.execute(f"""
+                SELECT MAX(depth) FROM memories 
+                WHERE id IN ({placeholders})
+            """, filling)
+            max_depth = cursor.fetchone()[0]
+            if max_depth is not None:
+                depth += max_depth
+        
+        # Create node
+        node = MemoryNode(
+            id=node_id,
+            type="thought",
+            subject=s,
+            predicate=p,
+            object=o,
+            description=description,
+            embedding=embedding_pair[1],
+            poignancy=poignancy,
+            keywords=set(k.lower() for k in keywords),
+            filling=filling,
+            created=created,
+            expiration=expiration
+        )
+        
+        # Store in database
+        self.add_memory(node)
+        
+        # Update keyword strengths if not idle
+        if f"{p} {o}" != "is idle":
+            for kw in node.keywords:
+                self.db.execute("""
+                    INSERT OR REPLACE INTO keyword_strengths (keyword, strength, type)
+                    VALUES (?, COALESCE(
+                        (SELECT strength + 1 FROM keyword_strengths 
+                         WHERE keyword=? AND type='thought'), 1
+                    ), 'thought')
+                """, (kw, kw))
+        
+        self.db.commit()
+        return node
 
 
-    def get_summarized_latest_events(self, retention): 
-      ret_set = set()
-      for e_node in self.seq_event[:retention]: 
-        ret_set.add(e_node.spo_summary())
-      return ret_set
+    def add_chat(self, created, expiration, s, p, o,
+                 description, keywords, poignancy,
+                 embedding_pair, filling=None):
+        """Add a chat memory"""
+        # Get current counts
+        cursor = self.db.execute("SELECT COUNT(*) FROM memories")
+        total_count = cursor.fetchone()[0] + 1
+        
+        cursor = self.db.execute("SELECT COUNT(*) FROM memories WHERE type='chat'")
+        type_count = cursor.fetchone()[0] + 1
+        
+        node_id = f"node_{str(total_count)}"
+        
+        # Create node
+        node = MemoryNode(
+            id=node_id,
+            type="chat",
+            subject=s,
+            predicate=p,
+            object=o,
+            description=description,
+            embedding=embedding_pair[1],
+            poignancy=poignancy,
+            keywords=set(k.lower() for k in keywords),
+            filling=filling,
+            created=created,
+            expiration=expiration
+        )
+        
+        # Store in database
+        self.add_memory(node)
+        self.db.commit()
+        return node
 
 
-    def get_str_seq_events(self): 
-      ret_str = ""
-      for count, event in enumerate(self.seq_event): 
-        ret_str += f'{"Event", len(self.seq_event) - count, ": ", event.spo_summary(), " -- ", event.description}\n'
-      return ret_str
+    def get_summarized_latest_events(self, retention):
+        """Get summaries of the most recent events"""
+        cursor = self.db.execute("""
+            SELECT subject, predicate, object 
+            FROM memories 
+            WHERE type = 'event'
+            ORDER BY created DESC
+            LIMIT ?
+        """, (retention,))
+        
+        return {(row[0], row[1], row[2]) for row in cursor.fetchall()}
 
 
-    def get_str_seq_thoughts(self): 
-      ret_str = ""
-      for count, event in enumerate(self.seq_thought): 
-        ret_str += f'{"Thought", len(self.seq_thought) - count, ": ", event.spo_summary(), " -- ", event.description}'
-      return ret_str
+    def get_str_seq_events(self):
+        """Get string representation of all events"""
+        cursor = self.db.execute("""
+            SELECT subject, predicate, object, description
+            FROM memories 
+            WHERE type = 'event'
+            ORDER BY created DESC
+        """)
+        rows = cursor.fetchall()
+        
+        ret_str = ""
+        for count, row in enumerate(rows):
+            ret_str += f'{"Event", len(rows) - count, ": ", (row[0], row[1], row[2]), " -- ", row[3]}\n'
+        return ret_str
 
 
-    def get_str_seq_chats(self): 
-      ret_str = ""
-      for count, event in enumerate(self.seq_chat): 
-        ret_str += f"with {event.object.content} ({event.description})\n"
-        ret_str += f'{event.created.strftime("%B %d, %Y, %H:%M:%S")}\n'
-        for row in event.filling: 
-          ret_str += f"{row[0]}: {row[1]}\n"
-      return ret_str
+    def get_str_seq_thoughts(self):
+        """Get string representation of all thoughts"""
+        cursor = self.db.execute("""
+            SELECT subject, predicate, object, description
+            FROM memories 
+            WHERE type = 'thought'
+            ORDER BY created DESC
+        """)
+        rows = cursor.fetchall()
+        
+        ret_str = ""
+        for count, row in enumerate(rows):
+            ret_str += f'{"Thought", len(rows) - count, ": ", (row[0], row[1], row[2]), " -- ", row[3]}'
+        return ret_str
+
+
+    def get_str_seq_chats(self):
+        """Get string representation of all chats"""
+        cursor = self.db.execute("""
+            SELECT object, description, created, filling
+            FROM memories 
+            WHERE type = 'chat'
+            ORDER BY created DESC
+        """)
+        rows = cursor.fetchall()
+        
+        ret_str = ""
+        for row in rows:
+            ret_str += f"with {row[0]} ({row[1]})\n"
+            created_dt = datetime.fromisoformat(row[2])
+            ret_str += f'{created_dt.strftime("%B %d, %Y, %H:%M:%S")}\n'
+            if row[3]:  # filling contains the chat messages
+                for msg in row[3].split(','):
+                    speaker, text = msg.split(':', 1)
+                    ret_str += f"{speaker}: {text}\n"
+        return ret_str
 
 
     def retrieve_relevant_thoughts(self, s_content, p_content, o_content):
