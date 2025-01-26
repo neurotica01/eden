@@ -6,7 +6,7 @@
 temp_storage/*
 storage/eden/*
 log/*
-# storage/*
+storage/*
 
 
 environment/frontend_server/temp_storage/curr_sim_code.json
