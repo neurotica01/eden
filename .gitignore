@@ -1,5 +1,9 @@
 # OpenAI API key
 openai_config.json
+
+.aider.*
+
+
 environment/frontend_server/temp_storage/curr_sim_code.json
 
 environment/frontend_server/storage/*

@@ -5,7 +5,7 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 # Put your name
 key_owner = "benny"
 
-maze_assets_loc = "../../assets"
+maze_assets_loc = "assets"
 env_matrix = f"{maze_assets_loc}/the_ville/matrix"
 env_visuals = f"{maze_assets_loc}/the_ville/visuals"
 
