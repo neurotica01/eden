@@ -69,8 +69,21 @@ class VectorMemory:
                 expiration TIMESTAMP
             )
         """)
+        
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS keyword_strengths (
+                keyword TEXT,
+                strength INTEGER,
+                type TEXT,
+                PRIMARY KEY (keyword, type)
+            )
+        """)
+        
         self.db.execute("""
             CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)
+        """)
+        self.db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_keywords ON memories(keywords)
         """)
         self.db.commit()
         
@@ -156,50 +169,57 @@ class VectorMemory:
         )
 
 
-    def add_event(self, created, expiration, s, p, o, 
-                        description, keywords, poignancy, 
-                        embedding_pair, filling):
-      # Setting up the node ID and counts.
-      node_count = len(self.id_to_node.keys()) + 1
-      type_count = len(self.seq_event) + 1
-      node_type = "event"
-      node_id = f"node_{str(node_count)}"
-      depth = 0
-
-      # Node type specific clean up. 
-      if "(" in description: 
-        description = (" ".join(description.split()[:3]) 
-                      + " " 
-                      +  description.split("(")[-1][:-1])
-
-      # Creating the <ConceptNode> object.
-      node = MemoryNode(node_id, node_count, type_count, node_type, depth,
-                        created, expiration, 
-                        s, p, o, 
-                        description, embedding_pair[0], 
-                        poignancy, keywords, filling)
-
-      # Creating various dictionary cache for fast access. 
-      self.seq_event[0:0] = [node]
-      keywords = [i.lower() for i in keywords]
-      for kw in keywords: 
-        if kw in self.kw_to_event: 
-          self.kw_to_event[kw][0:0] = [node]
-        else: 
-          self.kw_to_event[kw] = [node]
-      self.id_to_node[node_id] = node 
-
-      # Adding in the kw_strength
-      if f"{p} {o}" != "is idle":  
-        for kw in keywords: 
-          if kw in self.kw_strength_event: 
-            self.kw_strength_event[kw] += 1
-          else: 
-            self.kw_strength_event[kw] = 1
-
-      self.embeddings[embedding_pair[0]] = embedding_pair[1]
-
-      return node
+    def add_event(self, created, expiration, s, p, o,
+                 description, keywords, poignancy,
+                 embedding_pair, filling=None):
+        """Add an event memory"""
+        # Get current counts
+        cursor = self.db.execute("SELECT COUNT(*) FROM memories")
+        total_count = cursor.fetchone()[0] + 1
+        
+        cursor = self.db.execute("SELECT COUNT(*) FROM memories WHERE type='event'")
+        type_count = cursor.fetchone()[0] + 1
+        
+        node_id = f"node_{str(total_count)}"
+        
+        # Clean up description
+        if "(" in description:
+            description = (" ".join(description.split()[:3]) 
+                         + " " 
+                         + description.split("(")[-1][:-1])
+        
+        # Create node
+        node = MemoryNode(
+            id=node_id,
+            type="event",
+            subject=s,
+            predicate=p,
+            object=o,
+            description=description,
+            embedding=embedding_pair[1],
+            poignancy=poignancy,
+            keywords=set(k.lower() for k in keywords),
+            filling=filling,
+            created=created,
+            expiration=expiration
+        )
+        
+        # Store in database
+        self.add_memory(node)
+        
+        # Update keyword strengths if not idle
+        if f"{p} {o}" != "is idle":
+            for kw in node.keywords:
+                self.db.execute("""
+                    INSERT OR REPLACE INTO keyword_strengths (keyword, strength, type)
+                    VALUES (?, COALESCE(
+                        (SELECT strength + 1 FROM keyword_strengths 
+                         WHERE keyword=? AND type='event'), 1
+                    ), 'event')
+                """, (kw, kw))
+        
+        self.db.commit()
+        return node
 
 
     def add_thought(self, created, expiration, s, p, o, 
