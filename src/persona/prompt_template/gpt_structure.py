@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import time
 import traceback
+import os
 from openai import AzureOpenAI, OpenAI
 from config import openai_api_key, use_openai, api_model
 
@@ -78,7 +79,7 @@ def setup_client(type: str, config: dict):
     )
   elif type == "openai":
     client = OpenAI(
-      api_key=config["key"],
+      api_key=os.getenv("OPENAI_API_KEY"),
     )
   else:
     raise ValueError("Invalid client")
@@ -91,7 +92,7 @@ if openai_config["client"] == "azure":
     "api-version": openai_config["model-api-version"],
   })
 elif openai_config["client"] == "openai":
-  client = setup_client("openai", { "key": openai_config["model-key"] })
+  client = setup_client("openai", { "key": os.getenv("OPENAI_API_KEY") })
 
 if openai_config["embeddings-client"] == "azure":  
   embeddings_client = setup_client("azure", {

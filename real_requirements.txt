@@ -1,5 +1,5 @@
 langchain==0.0.273
 langsmith==0.0.41
 numpy==1.25.2
-openai==1.4
+openai
 pydantic==2.7.1

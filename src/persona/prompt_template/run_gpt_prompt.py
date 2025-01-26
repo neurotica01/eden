@@ -19,7 +19,7 @@ from pydantic import BaseModel, field_validator
 
 import sys
 sys.path.append('../../')
-from reverie.backend_server.utils import debug
+from config import debug
 from persona.prompt_template.gpt_structure import (
   generate_prompt,
   safe_generate_response,
@@ -29,7 +29,7 @@ from persona.prompt_template.gpt_structure import (
 )
 from persona.prompt_template.print_prompt import print_run_prompts
 
-config_path = Path("../../openai_config.json")
+config_path = Path("openai_config.json")
 with open(config_path, "r") as f:
   openai_config = json.load(f)
 
