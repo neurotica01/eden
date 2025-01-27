@@ -1,4 +1,5 @@
 """
+author: @neurotica01
 Modernized memory module using SQLite and strong typing.
 """
 from dataclasses import dataclass
@@ -7,6 +8,18 @@ from typing import Literal, Optional, List, Set
 import sqlite3
 import os
 import numpy as np
+
+# TODO: 
+# (1) schema management
+# (2) ORM
+# (3) on retreival increase reinforcement
+# (4) daily memory decay
+# (5) depth / filling management (how to do this?)
+# (6) persona tagging
+# (7) lowercase everything
+
+
+# (8) (day two) -> chat as multi-owner large description objects. maybe even copied for simplicity
 
 MemoryType = Literal["event", "thought", "chat"]
 
@@ -19,9 +32,9 @@ class MemoryNode:
     predicate: str
     object: str
     description: str
-    embedding: List[float]
     poignancy: float
-    keywords: Set[str]
+    reinforcement: float
+    depth: int
     filling: Optional[List[str]] = None
     created: datetime = datetime.now()
     last_accessed: datetime = datetime.now()
@@ -54,43 +67,93 @@ class VectorMemory:
         """Initialize database schema"""
         self.db.execute("""
             CREATE TABLE IF NOT EXISTS memories (
-                id TEXT PRIMARY KEY,
+                id TEXT PRIMARY KEY AUTOINCREMENT,
                 type TEXT NOT NULL,
+                owner TEXT,
                 subject TEXT,
                 predicate TEXT,
                 object TEXT,
                 description TEXT,
-                embedding BLOB,
                 poignancy REAL,
-                keywords TEXT,
+                reinforcement REAL,
                 filling TEXT,
                 created TIMESTAMP,
                 last_accessed TIMESTAMP,
                 expiration TIMESTAMP
             )
         """)
-        
+
         self.db.execute("""
-            CREATE TABLE IF NOT EXISTS keyword_strengths (
-                keyword TEXT,
-                strength INTEGER,
-                type TEXT,
-                PRIMARY KEY (keyword, type)
+            CREATE INDEX IF NOT EXISTS idx_owner ON memories(owner)
+        """)
+
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS keyword_strengths using vector(
+                id text primary key,
+                embedding vector(1536)
             )
         """)
-        
+
         self.db.execute("""
             CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(type)
         """)
-        self.db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_memories_keywords ON memories(keywords)
-        """)
         self.db.commit()
+    
+    def search(self, query_embedding: List[float], type: MemoryType, top_k: int = 5) -> List[MemoryNode]:
+        """Semantic search using cosine similarity"""
+        # Get all stored embeddings
+        cursor = self.db.execute("""
+            select rowid, distance
+            from keyword_strengths
+            where embedding match ?
+            and (type is NULL or type = ?)
+            order by distance
+            limit ?;
+        """, (query_embedding, top_k))
+
+        top_k_ids = [row[0] for row in cursor.fetchall()]
+
+        # Retrieve full nodes
+        return self.get_nodes(top_k_ids)
+
+    def get_node(self, node_id: str) -> MemoryNode:
+        nodes = self.get_nodes([node_id])
+        if not nodes:
+            raise ValueError(f"Node {node_id} not found")
+        return nodes[0]
         
-    def add_memory(self, node: MemoryNode):
+    def get_nodes(self, node_ids: List[str]) -> List[MemoryNode]:
+        """Retrieve a memory node by ID"""
+        cursor = self.db.execute(
+            "SELECT * FROM memories WHERE id IN (?)", (node_ids,)
+        )
+        rows = cursor.fetchall()
+        
+        if not rows:
+            raise ValueError(f"Node {node_ids} not found")
+            
+        res = []
+        for row in rows:
+            # Convert SQLite row to MemoryNode
+            res.append(MemoryNode(
+                id=row[0],
+            type=row[1],
+            subject=row[2],
+            predicate=row[3],
+            object=row[4],
+            description=row[5],
+            poignancy=row[7],
+            reinforcement=row[8],
+            filling=row[9].split(",") if row[9] else None,
+            created=datetime.fromisoformat(row[10]),
+            last_accessed=datetime.fromisoformat(row[11]),
+                expiration=datetime.fromisoformat(row[12]) if row[12] else None
+                ))
+        return res
+
+    def add_memory(self, node: MemoryNode, embedding: List[float]):
         """Store a new memory node"""
-        embedding_bytes = np.asarray(node.embedding).tobytes()
-        keywords_str = ",".join(node.keywords)
+   
         filling_str = ",".join(node.filling) if node.filling else None
         
         self.db.execute(
@@ -100,142 +163,64 @@ class VectorMemory:
             )
             """,
             (
-                node.id,
+                node.id, # I want auto incrementing ids, how do i do this?
                 node.type,
                 node.subject,
                 node.predicate,
                 node.object,
                 node.description,
-                embedding_bytes,
                 node.poignancy,
-                keywords_str,
+                node.reinforcement,
                 filling_str,
                 node.created.isoformat(),
                 node.last_accessed.isoformat(),
                 node.expiration.isoformat() if node.expiration else None
             )
         )
+
+        self.db.execute("""
+            INSERT INTO keyword_strengths VALUES (?, ?)
+        """, (self.db.lastrowid, embedding))
+
         self.db.commit()
 
-    
-    def search(self, query_embedding: List[float], top_k: int = 5) -> List[MemoryNode]:
-        """Semantic search using cosine similarity"""
-        # Get all stored embeddings
-        cursor = self.db.execute("SELECT id, embedding FROM memories")
-        results = []
-        
-        for row in cursor:
-            node_id, embedding_bytes = row
-            stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
-            
-            # Calculate cosine similarity
-            similarity = np.dot(query_embedding, stored_embedding) / (
-                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
-            )
-            results.append((node_id, similarity))
-            
-        # Sort by similarity and get top_k
-        results.sort(key=lambda x: x[1], reverse=True)
-        top_ids = [x[0] for x in results[:top_k]]
-        
-        # Retrieve full nodes
-        return [self.get_node(node_id) for node_id in top_ids]
-        
-    def get_node(self, node_id: str) -> MemoryNode:
-        """Retrieve a memory node by ID"""
-        cursor = self.db.execute(
-            "SELECT * FROM memories WHERE id = ?", (node_id,)
-        )
-        row = cursor.fetchone()
-        
-        if not row:
-            raise ValueError(f"Node {node_id} not found")
-            
-        # Convert SQLite row to MemoryNode
-        return MemoryNode(
-            id=row[0],
-            type=row[1],
-            subject=row[2],
-            predicate=row[3],
-            object=row[4],
-            description=row[5],
-            embedding=np.frombuffer(row[6], dtype=np.float32).tolist(),
-            poignancy=row[7],
-            keywords=set(row[8].split(",")) if row[8] else set(),
-            filling=row[9].split(",") if row[9] else None,
-            created=datetime.fromisoformat(row[10]),
-            last_accessed=datetime.fromisoformat(row[11]),
-            expiration=datetime.fromisoformat(row[12]) if row[12] else None
-        )
-
-
-    def add_event(self, created, expiration, s, p, o,
-                 description, keywords, poignancy,
+    def add_event(self, created, expiration, owner, s, p, o,
+                 description, poignancy,
                  embedding_pair, filling=None):
-        """Add an event memory"""
-        # Get current counts
-        cursor = self.db.execute("SELECT COUNT(*) FROM memories")
-        total_count = cursor.fetchone()[0] + 1
         
-        cursor = self.db.execute("SELECT COUNT(*) FROM memories WHERE type='event'")
-        type_count = cursor.fetchone()[0] + 1
-        
-        node_id = f"node_{str(total_count)}"
-        
-        # Clean up description
         if "(" in description:
             description = (" ".join(description.split()[:3]) 
-                         + " " 
-                         + description.split("(")[-1][:-1])
-        
-        # Create node
+                              + " " 
+                              + description.split("(")[-1][:-1])
+
         node = MemoryNode(
             id=node_id,
             type="event",
+            owner=owner.lower(),
             subject=s,
             predicate=p,
             object=o,
             description=description,
-            embedding=embedding_pair[1],
             poignancy=poignancy,
-            keywords=set(k.lower() for k in keywords),
+            reinforcement=0,
+            depth=0,
             filling=filling,
             created=created,
             expiration=expiration
         )
         
         # Store in database
-        self.add_memory(node)
-        
-        # Update keyword strengths if not idle
-        if f"{p} {o}" != "is idle":
-            for kw in node.keywords:
-                self.db.execute("""
-                    INSERT OR REPLACE INTO keyword_strengths (keyword, strength, type)
-                    VALUES (?, COALESCE(
-                        (SELECT strength + 1 FROM keyword_strengths 
-                         WHERE keyword=? AND type='event'), 1
-                    ), 'event')
-                """, (kw, kw))
-        
+        self.add_memory(node, embedding=embedding_pair[1])
         self.db.commit()
         return node
 
 
-    def add_thought(self, created, expiration, s, p, o,
-                   description, keywords, poignancy,
+    def add_thought(self, created, expiration, owner, s, p, o,
+                   description, poignancy,
                    embedding_pair, filling=None):
         """Add a thought memory"""
-        # Get current counts
-        cursor = self.db.execute("SELECT COUNT(*) FROM memories")
-        total_count = cursor.fetchone()[0] + 1
         
-        cursor = self.db.execute("SELECT COUNT(*) FROM memories WHERE type='thought'")
-        type_count = cursor.fetchone()[0] + 1
-        
-        node_id = f"node_{str(total_count)}"
-        
-        # Calculate depth
+        # Calculate depth ?????
         depth = 1
         if filling:
             # Get max depth of referenced nodes
@@ -252,67 +237,51 @@ class VectorMemory:
         node = MemoryNode(
             id=node_id,
             type="thought",
+            owner=owner.lower(),
             subject=s,
             predicate=p,
             object=o,
             description=description,
-            embedding=embedding_pair[1],
             poignancy=poignancy,
-            keywords=set(k.lower() for k in keywords),
+            reinforcement=0,
             filling=filling,
             created=created,
-            expiration=expiration
+            expiration=expiration,
+            depth=depth
         )
         
         # Store in database
-        self.add_memory(node)
-        
-        # Update keyword strengths if not idle
-        if f"{p} {o}" != "is idle":
-            for kw in node.keywords:
-                self.db.execute("""
-                    INSERT OR REPLACE INTO keyword_strengths (keyword, strength, type)
-                    VALUES (?, COALESCE(
-                        (SELECT strength + 1 FROM keyword_strengths 
-                         WHERE keyword=? AND type='thought'), 1
-                    ), 'thought')
-                """, (kw, kw))
-        
+        self.add_memory(node, embedding=embedding_pair[1])
         self.db.commit()
         return node
 
 
-    def add_chat(self, created, expiration, s, p, o,
-                 description, keywords, poignancy,
+    def add_chat(self, created, expiration, owner, s, p, o,
+                 description, poignancy,
                  embedding_pair, filling=None):
         """Add a chat memory"""
         # Get current counts
-        cursor = self.db.execute("SELECT COUNT(*) FROM memories")
-        total_count = cursor.fetchone()[0] + 1
-        
-        cursor = self.db.execute("SELECT COUNT(*) FROM memories WHERE type='chat'")
-        type_count = cursor.fetchone()[0] + 1
-        
-        node_id = f"node_{str(total_count)}"
+
         
         # Create node
         node = MemoryNode(
             id=node_id,
             type="chat",
+            owner=owner.lower(),
             subject=s,
             predicate=p,
             object=o,
             description=description,
-            embedding=embedding_pair[1],
             poignancy=poignancy,
-            keywords=set(k.lower() for k in keywords),
+            reinforcement=0,
+            depth=0,
             filling=filling,
             created=created,
             expiration=expiration
         )
         
         # Store in database
-        self.add_memory(node)
+        self.add_memory(node, embedding=embedding_pair[1])
         self.db.commit()
         return node
 
@@ -334,135 +303,13 @@ class VectorMemory:
         
         return {(row[0], row[1], row[2]) for row in cursor.fetchall()}
 
-
-    def get_str_seq_events(self):
-        """Get string representation of all events"""
-        cursor = self.db.execute("""
-            SELECT subject, predicate, object, description
-            FROM memories 
-            WHERE type = 'event'
-            ORDER BY created DESC
-        """)
-        rows = cursor.fetchall()
-        
-        ret_str = ""
-        for count, row in enumerate(rows):
-            ret_str += f'{"Event", len(rows) - count, ": ", (row[0], row[1], row[2]), " -- ", row[3]}\n'
-        return ret_str
-
-
-    def get_str_seq_thoughts(self):
-        """Get string representation of all thoughts"""
-        cursor = self.db.execute("""
-            SELECT subject, predicate, object, description
-            FROM memories 
-            WHERE type = 'thought'
-            ORDER BY created DESC
-        """)
-        rows = cursor.fetchall()
-        
-        ret_str = ""
-        for count, row in enumerate(rows):
-            ret_str += f'{"Thought", len(rows) - count, ": ", (row[0], row[1], row[2]), " -- ", row[3]}'
-        return ret_str
-
-
-    def get_str_seq_chats(self):
-        """Get string representation of all chats"""
-        cursor = self.db.execute("""
-            SELECT object, description, created, filling
-            FROM memories 
-            WHERE type = 'chat'
-            ORDER BY created DESC
-        """)
-        rows = cursor.fetchall()
-        
-        ret_str = ""
-        for row in rows:
-            ret_str += f"with {row[0]} ({row[1]})\n"
-            created_dt = datetime.fromisoformat(row[2])
-            ret_str += f'{created_dt.strftime("%B %d, %Y, %H:%M:%S")}\n'
-            if row[3]:  # filling contains the chat messages
-                for msg in row[3].split(','):
-                    speaker, text = msg.split(':', 1)
-                    ret_str += f"{speaker}: {text}\n"
-        return ret_str
-
-
-    def retrieve_relevant_thoughts(self, s_content, p_content, o_content):
-        """Retrieve thoughts based on semantic similarity to the query"""
-        # Combine the search terms into a single query string
-        query = " ".join(filter(None, [s_content, p_content, o_content]))
-        if not query:
-            return set()
-            
-        # Get query embedding from the combined text
-        query_embedding = self.get_embedding(query)
-        
-        # Get all thought nodes with their embeddings
-        cursor = self.db.execute("""
-            SELECT id, embedding FROM memories 
-            WHERE type = 'thought'
-        """)
-        
-        results = []
-        for row in cursor:
-            node_id, embedding_bytes = row
-            stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
-            
-            # Calculate cosine similarity
-            similarity = np.dot(query_embedding, stored_embedding) / (
-                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
-            )
-            results.append((node_id, similarity))
-        
-        # Sort by similarity and get top matches (similarity > 0.7)
-        results.sort(key=lambda x: x[1], reverse=True)
-        relevant_ids = [id for id, sim in results if sim > 0.7]
-        
-        return {self.get_node(node_id) for node_id in relevant_ids}
-
-
-    def retrieve_relevant_events(self, s_content, p_content, o_content):
-        """Retrieve events based on semantic similarity to the query"""
-        # Combine the search terms into a single query string
-        query = " ".join(filter(None, [s_content, p_content, o_content]))
-        if not query:
-            return set()
-            
-        # Get query embedding from the combined text
-        query_embedding = self.get_embedding(query)
-        
-        # Get all event nodes with their embeddings
-        cursor = self.db.execute("""
-            SELECT id, embedding FROM memories 
-            WHERE type = 'event'
-        """)
-        
-        results = []
-        for row in cursor:
-            node_id, embedding_bytes = row
-            stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
-            
-            # Calculate cosine similarity
-            similarity = np.dot(query_embedding, stored_embedding) / (
-                np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
-            )
-            results.append((node_id, similarity))
-        
-        # Sort by similarity and get top matches (similarity > 0.7)
-        results.sort(key=lambda x: x[1], reverse=True)
-        relevant_ids = [id for id, sim in results if sim > 0.7]
-        
-        return {self.get_node(node_id) for node_id in relevant_ids}
-
-
+    # TODO fix
     def get_last_chat(self, target_persona_name):
         """Get the most recent chat with the target persona"""
         cursor = self.db.execute("""
             SELECT * FROM memories 
-            WHERE type = 'chat'
-            AND keywords LIKE ?
+            WHERE type = 'chat' 
+            AND owner = ?
             ORDER BY created DESC
             LIMIT 1
         """, (f"%{target_persona_name.lower()}%",))
@@ -472,3 +319,125 @@ class VectorMemory:
             return False
             
         return self.get_node(row[0])
+
+
+    # def get_str_seq_events(self):
+    #     """Get string representation of all events"""
+    #     cursor = self.db.execute("""
+    #         SELECT subject, predicate, object, description
+    #         FROM memories 
+    #         WHERE type = 'event'
+    #         ORDER BY created DESC
+    #     """)
+    #     rows = cursor.fetchall()
+        
+    #     ret_str = ""
+    #     for count, row in enumerate(rows):
+    #         ret_str += f'{"Event", len(rows) - count, ": ", (row[0], row[1], row[2]), " -- ", row[3]}\n'
+    #     return ret_str
+
+
+    # def get_str_seq_thoughts(self):
+    #     """Get string representation of all thoughts"""
+    #     cursor = self.db.execute("""
+    #         SELECT subject, predicate, object, description
+    #         FROM memories 
+    #         WHERE type = 'thought'
+    #         ORDER BY created DESC
+    #     """)
+    #     rows = cursor.fetchall()
+        
+    #     ret_str = ""
+    #     for count, row in enumerate(rows):
+    #         ret_str += f'{"Thought", len(rows) - count, ": ", (row[0], row[1], row[2]), " -- ", row[3]}'
+    #     return ret_str
+
+
+    # def get_str_seq_chats(self):
+    #     """Get string representation of all chats"""
+    #     cursor = self.db.execute("""
+    #         SELECT object, description, created, filling
+    #         FROM memories 
+    #         WHERE type = 'chat'
+    #         ORDER BY created DESC
+    #     """)
+    #     rows = cursor.fetchall()
+        
+    #     ret_str = ""
+    #     for row in rows:
+    #         ret_str += f"with {row[0]} ({row[1]})\n"
+    #         created_dt = datetime.fromisoformat(row[2])
+    #         ret_str += f'{created_dt.strftime("%B %d, %Y, %H:%M:%S")}\n'
+    #         if row[3]:  # filling contains the chat messages
+    #             for msg in row[3].split(','):
+    #                 speaker, text = msg.split(':', 1)
+    #                 ret_str += f"{speaker}: {text}\n"
+    #     return ret_str
+
+
+    # def retrieve_relevant_thoughts(self, s_content, p_content, o_content):
+    #     """Retrieve thoughts based on semantic similarity to the query"""
+    #     # Combine the search terms into a single query string
+    #     query = " ".join(filter(None, [s_content, p_content, o_content]))
+    #     if not query:
+    #         return set()
+            
+    #     # Get query embedding from the combined text
+    #     query_embedding = self.get_embedding(query)
+        
+    #     # Get all thought nodes with their embeddings
+    #     cursor = self.db.execute("""
+    #         SELECT id, embedding FROM memories 
+    #         WHERE type = 'thought'
+    #     """)
+        
+    #     results = []
+    #     for row in cursor:
+    #         node_id, embedding_bytes = row
+    #         stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
+            
+    #         # Calculate cosine similarity
+    #         similarity = np.dot(query_embedding, stored_embedding) / (
+    #             np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
+    #         )
+    #         results.append((node_id, similarity))
+        
+    #     # Sort by similarity and get top matches (similarity > 0.7)
+    #     results.sort(key=lambda x: x[1], reverse=True)
+    #     relevant_ids = [id for id, sim in results if sim > 0.7]
+        
+    #     return {self.get_node(node_id) for node_id in relevant_ids}
+
+
+    # def retrieve_relevant_events(self, s_content, p_content, o_content):
+    #     """Retrieve events based on semantic similarity to the query"""
+    #     # Combine the search terms into a single query string
+    #     query = " ".join(filter(None, [s_content, p_content, o_content]))
+    #     if not query:
+    #         return set()
+            
+    #     # Get query embedding from the combined text
+    #     query_embedding = self.get_embedding(query)
+        
+    #     # Get all event nodes with their embeddings
+    #     cursor = self.db.execute("""
+    #         SELECT id, embedding FROM memories 
+    #         WHERE type = 'event'
+    #     """)
+        
+    #     results = []
+    #     for row in cursor:
+    #         node_id, embedding_bytes = row
+    #         stored_embedding = np.frombuffer(embedding_bytes, dtype=np.float32)
+            
+    #         # Calculate cosine similarity
+    #         similarity = np.dot(query_embedding, stored_embedding) / (
+    #             np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
+    #         )
+    #         results.append((node_id, similarity))
+        
+    #     # Sort by similarity and get top matches (similarity > 0.7)
+    #     results.sort(key=lambda x: x[1], reverse=True)
+    #     relevant_ids = [id for id, sim in results if sim > 0.7]
+        
+    #     return {self.get_node(node_id) for node_id in relevant_ids}

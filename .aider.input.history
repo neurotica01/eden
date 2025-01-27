@@ -227,3 +227,67 @@
 
 # 2025-01-26 13:44:02.350764
 +y
+
+# 2025-01-26 13:46:14.786532
++/code
+
+# 2025-01-26 13:47:09.050846
++hey see on line 163 we use id_to_node ? but i think above you mentioend that we donn't need to store id to node cuz we're using sqllite. so shold we rewrite things to not use that? up to you how to approach it, if you think we need to keep it that's cool too
+
+# 2025-01-26 13:48:32.961989
++/un
+
+# 2025-01-26 13:49:02.784429
++/undo
+
+# 2025-01-26 13:49:41.389305
++hey see on line 163 we use id_to_node ? but i think above you mentioend that we donn't need to store id to node cuz we're using sq
++llite. so shold we rewrite things to not use that? up to you how to approach it, if you think we need to keep it that's cool too  -- i'm in test_associative_memory.py
+
+# 2025-01-26 13:49:43.123234
++y
+
+# 2025-01-26 13:49:59.389240
++n
+
+# 2025-01-26 13:50:02.375460
++y
+
+# 2025-01-26 13:51:13.614833
++is there something similar with kw_to_event here as well that we need to fix?
+
+# 2025-01-26 13:51:50.241425
++sure
+
+# 2025-01-26 13:55:15.737670
++so uh i'm a little confused about what's going on in src/persona/memory_structures/new_associative_memory.py. isn't the whole idea about "Relevant memories" that we do a cosine similarity on the embeddings in the vector db? didn't we set up the sqlllite db to use vector embeddings?
+
+# 2025-01-26 13:55:17.734978
++y
+
+# 2025-01-26 13:57:34.149540
++do you know sqlite-vec? 
+
+# 2025-01-26 21:51:49.570051
++n
+
+# 2025-01-26 21:51:57.571687
++do you know sqlite-vec? n
+
+# 2025-01-26 21:51:59.090421
++n
+
+# 2025-01-26 21:52:02.444583
++/undo
+
+# 2025-01-26 22:04:10.576189
++/ask
+
+# 2025-01-26 22:04:22.862344
++keyword_strengths. it's not really used anywhere right
+
+# 2025-01-26 22:05:37.053068
++um. but can you help me out here - is add event and add thought only used oncreation right? not update? so basically the strength is only used once
+
+# 2025-01-26 22:07:13.271249
++ok is there a reason i shouldn't just remove the concept of keywords altogher and just use cosine similarity?
