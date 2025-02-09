@@ -12,16 +12,22 @@ from sqlalchemy import create_engine, Column, String, Float, Integer, DateTime, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.types import TypeDecorator
+from sqlalchemy import text
+from sqlalchemy.event import listen
+from sqlalchemy import event
+import struct
+import sqlite_vec
+
 import json
+import uuid  # Add this import at the top
 
 # TODO: 
 # (1) schema management
-# (2) ORM
-# (3) on retreival increase reinforcement
-# (4) daily memory decay
-# (5) depth / filling management (how to do this?)
-# (6) persona tagging
-# (7) lowercase everything
+# (2) on retreival increase reinforcement
+# (3) daily memory decay
+# (4) depth / filling management (how to do this?)
+# (5) persona tagging
+# (6) lowercase everything
 
 
 # (8) (day two) -> chat as multi-owner large description objects. maybe even copied for simplicity
@@ -29,6 +35,17 @@ import json
 MemoryType = Literal["event", "thought", "chat"]
 
 Base = declarative_base()
+
+def serialize_f32(vector: List[float]) -> bytes:
+    """serializes a list of floats into a compact "raw bytes" format"""
+    return struct.pack("%sf" % len(vector), *vector)
+
+def load_extension(dbapi_conn, unused):
+    dbapi_conn.enable_load_extension(True)
+    sqlite_vec.load_extension(dbapi_conn)
+    dbapi_conn.enable_load_extension(False)
+
+
 
 class ListType(TypeDecorator):
     """Custom type for handling List fields in SQLAlchemy"""
@@ -48,7 +65,7 @@ class MemoryNode(Base):
     """Core memory unit with SQLAlchemy ORM"""
     __tablename__ = 'memories'
     
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     type = Column(String, nullable=False)
     subject = Column(String)
     predicate = Column(String)
@@ -56,6 +73,7 @@ class MemoryNode(Base):
     description = Column(String)
     poignancy = Column(Float)
     reinforcement = Column(Float)
+    owner = Column(String)
     depth = Column(Integer)
     filling = Column(ListType)
     created = Column(DateTime, default=datetime.now)
@@ -77,14 +95,46 @@ class VectorMemory:
     """SQLAlchemy-backed memory storage with vector search capabilities"""
     
     def __init__(self, db_path: str = ":memory:"):
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        self.engine = create_engine(f'sqlite:///{db_path}/memory.db')
+        if db_path == ":memory:":
+            # Handle in-memory database case
+            self.engine = create_engine('sqlite:///:memory:')
+        else:
+            # Treat db_path as the *directory* where the database file will reside
+            os.makedirs(db_path, exist_ok=True)  # Create directory if needed
+            # Build full path to database file
+            db_file = os.path.join(db_path, "memory.db")
+            # Correct connection URL (auto-handles absolute/relative paths)
+            self.engine = create_engine(f'sqlite:///{db_file}', 
+                                      connect_args={'check_same_thread': False})
+        
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
+        # sqlite3.connect
+
+
+        @event.listens_for(self.engine, "connect")
+        def load_extensions(dbapi_connection, connection_record):
+            sqlite_vec.load(dbapi_connection)
+
+
+        # self.engine.raw_connection().enable_load_extension(True)
+        # sqlite_vec.load(self.engine)
+        # self.engine.raw_connection().enable_load_extension(False)
+
+
         self.session = Session()
 
-    def add_memory(self, node: MemoryNode, embedding: List[float]):
+        self.session.execute(text("""  
+            CREATE VIRTUAL TABLE IF NOT EXISTS keyword_strengths using vec0 (
+                id text primary key,
+                embedding float[1536]
+            )
+        """))
+
+    def add_memory(self, node: MemoryNode):
         """Store a new memory node using SQLAlchemy session"""
+
+        embedding = self.get_embedding(node.description)
 
         filling_str = ",".join(node.filling) if node.filling else None
         node.filling = filling_str
@@ -92,8 +142,9 @@ class VectorMemory:
         self.session.add(node)
         
         # Add embedding separately since it's in a different table
-        self.session.execute(
-            """INSERT INTO keyword_strengths VALUES (?, ?)""",
+        self.session.execute(text(""" 
+            INSERT INTO keyword_strengths VALUES (?, ?)
+        """),
             {"id": node.id, "embedding": embedding}
         )
         
@@ -150,35 +201,35 @@ class VectorMemory:
         return cursor[0]
 
     def add_event(self, created, expiration, owner, s, p, o,
-                 description, poignancy, embedding_pair, filling=None):
+                 description, poignancy, filling=None):
         
-      if "(" in description:
-          description = (" ".join(description.split()[:3]) 
+        if "(" in description:
+            description = (" ".join(description.split()[:3]) 
                             + " " 
                             + description.split("(")[-1][:-1])
 
-      node = MemoryNode(
-          type="event",
-          subject=s,
-          predicate=p,
-          object=o,
-          owner=owner.lower(),
-          description=description,
-          poignancy=poignancy,
-          reinforcement=0,
-          depth=0,
-          filling=filling,
-          created=created,
-          expiration=expiration
-      )
-      
-      self.add_memory(node, embedding=embedding_pair[1])
-      return node
+        node = MemoryNode(
+            type="event",
+            subject=s,
+            predicate=p,
+            object=o,
+            owner=owner.lower(),
+            description=description,
+            poignancy=poignancy,
+            reinforcement=0,
+            depth=0,
+            filling=filling,
+            created=created,
+            expiration=expiration
+        )
+        
+        self.add_memory(node)
+        return node
 
 
     def add_thought(self, created, expiration, owner, s, p, o,
                    description, poignancy,
-                   embedding_pair, filling=None):
+                   filling=None):
         """Add a thought memory"""
         
         # Calculate depth ?????
@@ -196,7 +247,6 @@ class VectorMemory:
         
         # Create node
         node = MemoryNode(
-            id=node_id,
             type="thought",
             owner=owner.lower(),
             subject=s,
@@ -212,20 +262,16 @@ class VectorMemory:
         )
         
         # Store in database
-        self.add_memory(node, embedding=embedding_pair[1])
+        self.add_memory(node)
         return node
 
 
     def add_chat(self, created, expiration, owner, s, p, o,
                  description, poignancy,
-                 embedding_pair, filling=None):
+                 filling=None):
         """Add a chat memory"""
-        # Get current counts
-
-        
         # Create node
         node = MemoryNode(
-            id=node_id,
             type="chat",
             owner=owner.lower(),
             subject=s,
@@ -234,12 +280,12 @@ class VectorMemory:
             description=description,
             poignancy=poignancy,
             reinforcement=0,
-            depth=0,
+            depth=len(filling) if filling else 0,
             filling=filling,
             created=created,
             expiration=expiration
         )
         
         # Store in database
-        self.add_memory(node, embedding=embedding_pair[1])
+        self.add_memory(node)
         return node

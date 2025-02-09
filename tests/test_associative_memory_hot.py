@@ -1,51 +1,43 @@
 import pytest                                                                                                                                                                                                
 import datetime                                                                                                                                                                                              
 import json                                                                                                                                                                                                  
-from src.config import openai_api_key, use_openai, api_model
+from config import openai_api_key, use_openai, api_model
 
 # from src.persona.memory_structures.associative_memory import AssociativeMemory      
-from src.persona.memory_structures.new_associative_memory import MemoryNode, VectorMemory                                                                                                                          
-from src.persona.prompt_template.gpt_structure import get_embedding        
+from persona.memory_structures.new_associative_memory import VectorMemory                                                                                                                          
+from persona.prompt_template.gpt_structure import get_embedding        
                                                                                                                                                                                                             
 @pytest.fixture                                                                                                                                                                                              
 def hot_memory(tmp_path):                                                                                                                                                                                    
     # Create temporary test files                                                                                                                                                                            
-    memory_dir = tmp_path / "memory"                                                                                                                                                                         
-    memory_dir.mkdir()                                                                                                                                                                                       
-                                                                                                                                                                                                            
-    # Create empty initial files                                                                                                                                                                             
-    embeddings = {}                                                                                                                                                                                          
-    nodes = {}                                                                                                                                                                                               
-    kw_strength = {"kw_strength_event": {}, "kw_strength_thought": {}}                                                                                                                                       
-                                                                                                                                                                                                            
-    (memory_dir / "embeddings.json").write_text(json.dumps(embeddings))                                                                                                                                      
-    (memory_dir / "nodes.json").write_text(json.dumps(nodes))                                                                                                                                                
-    (memory_dir / "kw_strength.json").write_text(json.dumps(kw_strength))                                                                                                                                    
-                                                                                                                                                                                                            
-    return VectorMemory(str(memory_dir))                                                                                                                                                                
-                                                                                                                                                                                                            
+    memory_dir = "./tmp/memory"                                                                                                                                                                         
+    memory = VectorMemory(str(memory_dir))      
+    return memory  # Return the memory object for test use
+
+    # # Cleanup after tests complete
+    # import shutil
+    # shutil.rmtree(str(memory_dir))
+
 @pytest.mark.slow  # Mark these tests as slow since they use real API                                                                                                                                        
 def test_retrieve_semantically_similar_events(hot_memory):                                                                                                                                                   
     created = datetime.datetime.now()                                                                                                                                                                        
                                                                                                                                                                                                             
     # Add events with semantic relationships                                                                                                                                                                 
     event1_desc = "John is cooking pasta for dinner in the kitchen"                                                                                                                                          
-    event1_embedding = get_embedding(event1_desc)                                                                                                                                                            
+    # event1_embedding = get_embedding(event1_desc)                                                                                                                                                            
     event1 = hot_memory.add_event(                                                                                                                                                                           
         created=created,                                                                                                                                                                                     
         expiration=None,                                                                                                                                                                                     
         s="John",                                                                                                                                                                                            
         p="cooks",                                                                                                                                                                                           
-        o="pasta",                                                                                                                                                                                           
+        o="pasta",            
+        owner="John",                                                                                                                                                                               
         description=event1_desc,                                                                                                                                                                             
-        keywords={"cooking", "pasta", "dinner"},                                                                                                                                                             
         poignancy=0.5,                                                                                                                                                                                       
-        embedding_pair=("key1", event1_embedding),                                                                                                                                                           
         filling=None                                                                                                                                                                                         
     )                                                                                                                                                                                                        
                                                                                                                                                                                                             
     event2_desc = "Mary is preparing spaghetti with meatballs"                                                                                                                                               
-    event2_embedding = get_embedding(event2_desc)                                                                                                                                                            
     event2 = hot_memory.add_event(                                                                                                                                                                           
         created=created,                                                                                                                                                                                     
         expiration=None,                                                                                                                                                                                     
@@ -53,9 +45,8 @@ def test_retrieve_semantically_similar_events(hot_memory):
         p="prepares",                                                                                                                                                                                        
         o="spaghetti",                                                                                                                                                                                       
         description=event2_desc,                                                                                                                                                                             
-        keywords={"cooking", "spaghetti", "meatballs"},                                                                                                                                                      
         poignancy=0.5,                                                                                                                                                                                       
-        embedding_pair=("key2", event2_embedding),                                                                                                                                                           
+        owner="Mary",                                                                                                                                                                                       
         filling=None                                                                                                                                                                                         
     )                                                                                                                                                                                                        
                                                                                                                                                                                                             
@@ -131,10 +122,9 @@ def test_retrieve_events_with_context_switch(hot_memory):
             p=event_data["p"],                                                                                                                                                                               
             o=event_data["o"],                                                                                                                                                                               
             description=event_data["desc"],                                                                                                                                                                  
-            keywords=event_data["keywords"],                                                                                                                                                                 
             poignancy=0.5,                                                                                                                                                                                   
-            embedding_pair=(f"key{i+1}", embedding),                                                                                                                                                         
-            filling=None                                                                                                                                                                                     
+            owner="John",                                                                                                                                                                                       
+                filling=None                                                                                                                                                                                     
         )                                                                                                                                                                                                    
         added_events.append(event)                                                                                                                                                                           
                                                                                                                                                                                                             
